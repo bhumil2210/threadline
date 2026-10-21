@@ -1,0 +1,20 @@
+## What just happened
+
+Three virtual threads ran on two real OS threads, called *carriers*. A virtual thread only occupies a carrier while it's actually running. When vt-1 and vt-2 called `sleep()`, they **unmounted**, and carrier-1 picked up vt-3. After the sleeps, vt-1 and vt-2 **remounted**, on swapped carriers. For a moment all three were asleep and both carriers were free.
+
+## Why this matters
+
+A platform thread that blocks on I/O holds an OS thread doing nothing. That's why servers needed thread pools and callbacks. A virtual thread that blocks costs almost nothing, so you can write simple blocking code and still run thousands of tasks at once.
+
+```java
+try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+    for (var request : requests) executor.submit(() -> handle(request));
+}
+```
+
+## Good to know
+
+- Don't pool virtual threads. They're cheap: create one per task.
+- They help with **waiting** (I/O, sleep, locks), not with CPU-heavy work. Computing still needs real cores.
+- To limit load on a database or API, use a `Semaphore`, not a small pool.
+- **Pinning**: before JDK 24, blocking inside `synchronized` kept the virtual thread stuck to its carrier. JDK 24 removed that limit (JEP 491). Native calls still pin. Threadline's tests check this on JDK 21 and JDK 25.

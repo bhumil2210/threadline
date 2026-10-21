@@ -21,6 +21,8 @@ dependencies {
 tasks.test {
     useJUnitPlatform()
     inputs.dir("../../scenarios/java").withPropertyName("scenarios")
+    // Two carrier threads, so virtual-thread facts match the scenario.
+    systemProperty("jdk.virtualThreadScheduler.parallelism", "2")
     testLogging {
         events("passed", "failed", "skipped")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL

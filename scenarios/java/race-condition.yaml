@@ -1,6 +1,7 @@
 id: race-condition
 lang: java
 group: Shared state
+order: 1
 title: Why count++ loses updates
 summary: Two threads each run count++ once. The result can be 1, not 2.
 duration: 9

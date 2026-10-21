@@ -1,30 +1,76 @@
 ---
-import { getCollection } from 'astro:content';
+import { getEntry, render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import Player from '../../components/Player.svelte';
 import { highlightLines } from '../../lib/highlight';
+import { LANG_NAME, allScenarios, scenarioUrl } from '../../lib/catalog';
 import type { Timeline } from '../../lib/timeline';
 
 export async function getStaticPaths() {
-  const scenarios = await getCollection('scenarios');
-  return scenarios.map(({ data }) => ({
-    params: { lang: data.lang, id: data.id },
-    props: { scenario: data },
+  const scenarios = await allScenarios();
+  return scenarios.map((scenario, i) => ({
+    params: { lang: scenario.lang, id: scenario.id },
+    props: {
+      scenario,
+      prev: scenarios[i - 1]?.lang === scenario.lang ? scenarios[i - 1] : undefined,
+      next: scenarios[i + 1]?.lang === scenario.lang ? scenarios[i + 1] : undefined,
+    },
   }));
 }
 
-const { scenario } = Astro.props as { scenario: Timeline };
+interface Props {
+  scenario: Timeline;
+  prev?: Timeline;
+  next?: Timeline;
+}
+
+const { scenario, prev, next } = Astro.props;
 const codeLines = await highlightLines(scenario.code, scenario.lang);
-const LANG_NAME = { java: 'Java', go: 'Go', rust: 'Rust' } as const;
+const writeup = await getEntry('writeups', `${scenario.lang}/${scenario.id}`);
+const Writeup = writeup ? (await render(writeup)).Content : undefined;
 ---
 
 <Base title={`${scenario.title} · Threadline`} description={scenario.summary}>
   <header class="intro">
-    <p class="crumbs">{LANG_NAME[scenario.lang]} <span aria-hidden="true">/</span> {scenario.group}</p>
+    <p class="crumbs">
+      <a href="/">{LANG_NAME[scenario.lang]}</a> <span aria-hidden="true">/</span>
+      {scenario.group} <span aria-hidden="true">·</span>
+      {scenario.order}
+    </p>
     <h1>{scenario.title}</h1>
     <p class="summary">{scenario.summary}</p>
   </header>
+
   <Player client:load timeline={scenario} codeLines={codeLines} />
+
+  {
+    Writeup && (
+      <article class="writeup">
+        <Writeup />
+      </article>
+    )
+  }
+
+  <nav class="pager" aria-label="More scenarios">
+    {
+      prev ? (
+        <a class="prev" href={scenarioUrl(prev)}>
+          <span>Previous</span>
+          {prev.title}
+        </a>
+      ) : (
+        <span />
+      )
+    }
+    {
+      next && (
+        <a class="next" href={scenarioUrl(next)}>
+          <span>Next</span>
+          {next.title}
+        </a>
+      )
+    }
+  </nav>
 </Base>
 
 <style>
@@ -39,6 +85,10 @@ const LANG_NAME = { java: 'Java', go: 'Go', rust: 'Rust' } as const;
     letter-spacing: 0.04em;
   }
 
+  .crumbs a {
+    color: var(--muted);
+  }
+
   h1 {
     margin: 0;
     font-size: clamp(24px, 4vw, 34px);
@@ -51,5 +101,129 @@ const LANG_NAME = { java: 'Java', go: 'Go', rust: 'Rust' } as const;
     margin: 8px 0 0;
     color: var(--muted);
     max-width: 62ch;
+  }
+
+  .writeup {
+    max-width: 70ch;
+    margin: 48px 0 0;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    font-size: 16px;
+    line-height: 1.65;
+  }
+
+  .writeup :global(h2) {
+    margin: 32px 0 8px;
+    font-size: 19px;
+    font-weight: 600;
+  }
+
+  .writeup :global(p),
+  .writeup :global(ul),
+  .writeup :global(ol) {
+    margin: 0 0 14px;
+  }
+
+  .writeup :global(li) {
+    margin: 4px 0;
+  }
+
+  .writeup :global(li::marker) {
+    color: var(--muted);
+  }
+
+  .writeup :global(strong) {
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .writeup :global(:not(pre) > code) {
+    padding: 1px 5px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 0.88em;
+    overflow-wrap: anywhere; /* long calls like Runtime.getRuntime()... must wrap on phones */
+  }
+
+  .writeup :global(pre) {
+    margin: 0 0 16px;
+    padding: 12px 16px;
+    overflow-x: auto;
+    background: var(--surface) !important;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+
+  .writeup :global(table) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 0 0 16px;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  .writeup :global(td code) {
+    white-space: nowrap;
+    overflow-wrap: normal;
+  }
+
+  .writeup :global(th),
+  .writeup :global(td) {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .writeup :global(th) {
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .pager {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 48px;
+  }
+
+  .pager a {
+    display: grid;
+    gap: 2px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    text-decoration: none;
+    font-weight: 500;
+    transition: border-color 120ms;
+  }
+
+  .pager a:hover {
+    border-color: var(--muted);
+  }
+
+  .pager span {
+    font: 12px var(--font-mono);
+    color: var(--muted);
+  }
+
+  .pager .next {
+    grid-column: 2;
+    text-align: right;
+  }
+
+  @media (max-width: 560px) {
+    .pager {
+      grid-template-columns: 1fr;
+    }
+
+    .pager .next {
+      grid-column: 1;
+    }
   }
 </style>

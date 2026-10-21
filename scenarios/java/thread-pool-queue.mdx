@@ -1,0 +1,18 @@
+## What just happened
+
+The pool had 2 threads and got 4 tasks. Two tasks ran right away. The other two waited in the pool's queue, and each was picked up by whichever thread finished first. No new threads were created. The same two threads did all the work.
+
+## Why pools exist
+
+Starting a platform thread is expensive: it costs memory and an OS call. A pool creates a few threads once and keeps reusing them. It also caps how much runs at once, so 10,000 requests don't become 10,000 threads.
+
+## Choosing a pool size
+
+- **CPU-heavy work**: about as many threads as cores (`Runtime.getRuntime().availableProcessors()`). More threads just take turns on the same cores.
+- **Work that waits on I/O**: more threads help, because most of them are waiting. On JDK 21+, virtual threads are often the simpler answer (see the last scenario).
+
+## Watch out
+
+`newFixedThreadPool` uses an **unbounded** queue. If tasks arrive faster than they finish, the queue grows until you run out of memory. For production, build a `ThreadPoolExecutor` with a bounded queue and decide what happens when it's full.
+
+Always `shutdown()` a pool you created. Its threads aren't daemons, so they can keep the JVM alive.

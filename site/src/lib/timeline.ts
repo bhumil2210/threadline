@@ -12,6 +12,7 @@ const event = z.object({
   end: time,
   type: z.enum(EVENT_TYPES),
   label: z.string().min(1),
+  short: z.string().min(1).optional(), // shown instead of label when the block is too narrow
   line: line.optional(),
 });
 
@@ -31,6 +32,7 @@ const baseTimeline = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/, 'id must be kebab-case'),
   lang: z.enum(['java', 'go', 'rust']),
   group: z.string().min(1),
+  order: z.number().int().positive(), // reading order within the language
   title: z.string().min(1),
   summary: z.string().min(1),
   duration: z.number().positive(),

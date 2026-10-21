@@ -1,0 +1,25 @@
+## What just happened
+
+**thenCompose** ran two calls one after another, because the second call needed the first one's result (the user). Total wait: both calls added together.
+
+**thenCombine** started two calls at once, because the weather doesn't depend on the user. When both were done, `render` got both results. Total wait: the slower of the two.
+
+## How to choose
+
+Ask: *does call B need A's result?*
+
+- Yes: `a.thenCompose(x -> callB(x))`, one after another.
+- No: `a.thenCombine(callB(), (x, y) -> ...)`, side by side.
+
+## Why not thenApply?
+
+```java
+fetchUser(42).thenApply(user -> fetchLastOrder(user))
+// CompletableFuture<CompletableFuture<Order>>: a future inside a future
+```
+
+`thenApply` wraps whatever you return. When your function already returns a future, `thenCompose` flattens it. It's the same idea as `flatMap` on streams and Optionals.
+
+## Common mistake
+
+Chaining independent calls with `thenCompose` "because it works". It does work, but it's needlessly slow: you pay for every call in turn instead of only the slowest one.

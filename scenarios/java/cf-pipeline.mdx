@@ -1,0 +1,19 @@
+## What just happened
+
+main described a three-step pipeline and then waited on `join()`. A common-pool thread ran the steps in order: `fetchUser`, then `thenApply` with the user, then `thenAccept` with the name. Each step started the moment the previous one finished.
+
+## The three steps
+
+- `supplyAsync(() -> ...)`: run this on another thread and produce a value.
+- `thenApply(x -> ...)`: turn the value into a new value.
+- `thenAccept(x -> ...)`: use the value, return nothing.
+
+Each call returns a **new** future for the next step, so they chain.
+
+## Why it's better than Future.get()
+
+With `Future`, a thread has to block on `get()` before it can do the next step. Here, no thread waits between steps: the next step runs when the value arrives. main only waits at the very end, and only because this program has nothing else to do.
+
+## Watch out
+
+`supplyAsync` without an executor uses the shared `ForkJoinPool.commonPool()`. Its threads are daemons, so if main exits first, your pipeline may never finish. In a real app, pass your own executor for anything that does I/O, so slow calls don't hog the shared pool.

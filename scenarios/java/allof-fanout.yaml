@@ -1,0 +1,43 @@
+id: allof-fanout
+lang: java
+group: CompletableFuture
+order: 8
+title: Fan out with allOf
+summary: Start three calls at once and wait for all of them. The total wait is the slowest call, not the sum.
+duration: 7
+lanes: [main, io-1, io-2, io-3]
+code: |
+  var a = CompletableFuture.supplyAsync(() -> priceAt("A"), io);
+  var b = CompletableFuture.supplyAsync(() -> priceAt("B"), io);
+  var c = CompletableFuture.supplyAsync(() -> priceAt("C"), io);
+
+  CompletableFuture.allOf(a, b, c).join(); // waits for the slowest
+  int cheapest = Math.min(a.join(), Math.min(b.join(), c.join())); // no waiting now
+events:
+  - { id: m1, lane: main, start: 0, end: 1, type: run, label: "start a, b, c", line: 1 }
+  - { id: m2, lane: main, start: 1, end: 6, type: wait, label: "allOf(...).join()", line: 5 }
+  - { id: m3, lane: main, start: 6, end: 7, type: run, label: "Math.min", line: 6 }
+  - { id: a, lane: io-1, start: 1, end: 3, type: io, label: "priceAt(A)", line: 1 }
+  - { id: b, lane: io-2, start: 1, end: 6, type: io, label: "priceAt(B)", line: 2 }
+  - { id: c, lane: io-3, start: 1, end: 4, type: io, label: "priceAt(C)", line: 3 }
+deps:
+  - [m1, a]
+  - [m1, b]
+  - [m1, c]
+  - [b, m3]
+markers:
+  - { at: 0, text: "Three price calls start at once, each on its own pool thread.", line: 1 }
+  - { at: 1, text: "allOf(a, b, c).join() parks main until every call has finished.", line: 5 }
+  - { at: 3, text: "A is done. allOf keeps waiting.", line: 5 }
+  - { at: 4, text: "C is done. Still waiting on B.", line: 5 }
+  - { at: 6, text: "B, the slowest, is done. main waited 5 units: the slowest call, not 2 + 5 + 3.", line: 6 }
+state:
+  - { at: 1, key: a, value: "pending" }
+  - { at: 1, key: b, value: "pending" }
+  - { at: 1, key: c, value: "pending" }
+  - { at: 3, key: a, value: "12" }
+  - { at: 4, key: c, value: "9" }
+  - { at: 6, key: b, value: "15" }
+  - { at: 7, key: cheapest, value: "9" }
+takeaway: allOf waits for all of them. The total wait is the slowest call, not the sum. Afterwards every join() returns at once.
+gotcha: allOf gives you CompletableFuture<Void>. It tells you when, not what, so read each result with join(). If one call fails, allOf still waits for the rest before it fails.

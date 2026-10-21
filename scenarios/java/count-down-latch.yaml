@@ -1,0 +1,40 @@
+id: count-down-latch
+lang: java
+group: Coordination
+order: 10
+title: Wait for N things with CountDownLatch
+summary: main waits until three loaders have each counted down once. Then the latch opens.
+duration: 6
+lanes: [main, db, cache, config]
+code: |
+  CountDownLatch ready = new CountDownLatch(3);
+  for (String name : List.of("db", "cache", "config")) {
+      new Thread(() -> {
+          load(name);
+          ready.countDown(); // one fewer to wait for
+      }, name).start();
+  }
+  ready.await(); // main waits until the count reaches 0
+  System.out.println("all loaded, start serving");
+events:
+  - { id: m1, lane: main, start: 0, end: 1, type: run, label: "start loaders", line: 6 }
+  - { id: m2, lane: main, start: 1, end: 5, type: wait, label: "ready.await()", line: 8 }
+  - { id: m3, lane: main, start: 5, end: 6, type: run, label: "start serving", line: 9 }
+  - { id: d, lane: db, start: 1, end: 4, type: io, label: "load(db)", line: 4 }
+  - { id: c, lane: cache, start: 1, end: 3, type: io, label: "load(cache)", line: 4 }
+  - { id: g, lane: config, start: 1, end: 5, type: io, label: "load(config)", line: 4 }
+deps:
+  - [g, m3]
+markers:
+  - { at: 0, text: "The latch starts at 3: one count for each thing to load.", line: 1 }
+  - { at: 1, text: "main calls await() and parks. The three loaders run in parallel.", line: 8 }
+  - { at: 3, text: "cache is loaded and counts down: 2 left.", line: 5 }
+  - { at: 4, text: "db counts down: 1 left. main is still waiting.", line: 5 }
+  - { at: 5, text: "config counts down to 0. The latch opens and main continues.", line: 8 }
+state:
+  - { at: 0, key: count, value: "3" }
+  - { at: 3, key: count, value: "2" }
+  - { at: 4, key: count, value: "1" }
+  - { at: 5, key: count, value: "0" }
+takeaway: A CountDownLatch lets a thread wait for N things to happen. Each countDown() is one thing; await() returns when the count hits 0.
+gotcha: If a loader throws before countDown(), the count never reaches 0 and main waits forever. Count down in a finally block, or use await with a timeout. A latch is also single-use; it can't be reset.

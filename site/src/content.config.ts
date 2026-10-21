@@ -7,4 +7,9 @@ const scenarios = defineCollection({
   schema: timelineSchema,
 });
 
-export const collections = { scenarios };
+/** Prose shown under each player. `scenarios/java/race-condition.mdx` pairs with the YAML of the same name. */
+const writeups = defineCollection({
+  loader: glob({ pattern: '**/*.mdx', base: '../scenarios' }),
+});
+
+export const collections = { scenarios, writeups };

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import TimelineView, { LABEL_W } from './Timeline.svelte';
+  import TimelineView, { labelWidth } from './Timeline.svelte';
   import {
     EPS,
     activeEvents,
@@ -63,6 +63,9 @@
   let scrollerWidth = $state(0);
   let scrollLeft = 0;
   let ready = $state(false);
+
+  const compact = $derived(scrollerWidth > 0 && scrollerWidth < 560);
+  const LABEL_W = $derived(compact ? 6 : labelWidth(timeline.lanes));
 
   // Fill the card's width; below 56px per unit the timeline scrolls instead of squashing.
   const ppu = $derived(scrollerWidth ? Math.max(56, (scrollerWidth - 12 - LABEL_W - PAD_R) / duration) : 72);
@@ -168,7 +171,7 @@
       bind:clientWidth={scrollerWidth}
       onscroll={(e) => (scrollLeft = e.currentTarget.scrollLeft)}
     >
-      <TimelineView {timeline} {t} {activeIds} {ppu} />
+      <TimelineView {timeline} {t} {activeIds} {ppu} {compact} labelW={LABEL_W} />
     </div>
     <ul class="legend" aria-label="Legend">
       {#each usedTypes as type (type)}
@@ -280,6 +283,8 @@
 <style>
   .player {
     display: grid;
+    /* minmax(0, …) so a wide timeline scrolls inside its card instead of widening the page. */
+    grid-template-columns: minmax(0, 1fr);
     gap: 14px;
   }
 

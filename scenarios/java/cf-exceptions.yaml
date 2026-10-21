@@ -1,0 +1,44 @@
+id: cf-exceptions
+lang: java
+group: CompletableFuture
+order: 9
+title: When a step throws
+summary: An exception skips the next steps until something handles it. exceptionally runs only on failure; handle always runs.
+duration: 7
+lanes: [main, io-1, io-2]
+code: |
+  var price = CompletableFuture.supplyAsync(() -> priceAt("A"), io) // throws: shop is down
+      .thenApply(p -> p * 2)        // skipped: there is no value
+      .exceptionally(ex -> -1);     // runs only on failure: fallback -1
+
+  var label = CompletableFuture.supplyAsync(() -> priceAt("B"), io) // works
+      .handle((p, ex) -> ex == null ? "€" + p : "n/a"); // always runs
+
+  System.out.println(price.join() + " " + label.join()); // -1 €12
+events:
+  - { id: m1, lane: main, start: 0, end: 1, type: run, label: "start both", line: 1 }
+  - { id: m2, lane: main, start: 1, end: 6, type: wait, label: "price.join()", line: 8 }
+  - { id: m3, lane: main, start: 6, end: 7, type: run, label: "println", line: 8 }
+  - { id: e, lane: io-1, start: 1, end: 4, type: error, label: "priceAt(A) throws", line: 1 }
+  - { id: s, lane: io-1, start: 4, end: 5, type: skip, label: "p * 2", line: 2 }
+  - { id: x, lane: io-1, start: 5, end: 6, type: run, label: "exceptionally", line: 3 }
+  - { id: b, lane: io-2, start: 1, end: 3, type: io, label: "priceAt(B)", line: 5 }
+  - { id: h, lane: io-2, start: 3, end: 4, type: run, label: "handle", line: 6 }
+deps:
+  - [m1, e]
+  - [m1, b]
+  - [x, m3]
+markers:
+  - { at: 0, text: "Two chains start. Shop A is down; shop B works.", line: 1 }
+  - { at: 3, text: "B returns 12. handle runs with (12, null) and turns it into \"€12\".", line: 6 }
+  - { at: 4, text: "A throws. The future now holds an exception, so thenApply is skipped.", line: 2 }
+  - { at: 5, text: "exceptionally sees the exception and returns -1. The chain is healthy again.", line: 3 }
+  - { at: 6, text: "main prints -1 €12.", line: 8 }
+state:
+  - { at: 1, key: price, value: "pending" }
+  - { at: 4, key: price, value: "failed: ShopDown" }
+  - { at: 6, key: price, value: "-1" }
+  - { at: 1, key: label, value: "pending" }
+  - { at: 4, key: label, value: "\"€12\"" }
+takeaway: An exception skips every step until one handles it. exceptionally runs only on failure. handle always runs and sees both the value and the error.
+gotcha: The exception you get is usually a CompletionException wrapping the real one. Use ex.getCause() to see what actually went wrong.

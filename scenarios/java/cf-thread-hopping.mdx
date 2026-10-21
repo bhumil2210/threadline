@@ -1,0 +1,20 @@
+## What just happened
+
+The same `parse` callback ran on three different threads:
+
+1. **main**, for `done.thenApply(...)`, because `done` was already complete when the callback was attached.
+2. **io-1**, for `f.thenApply(...)`, because io-1 is the thread that completed `f`.
+3. **cpu-1**, for `f.thenApplyAsync(..., cpuPool)`, because async means "submit to this executor".
+
+## The rule
+
+- **Non-async** (`thenApply`, `thenAccept`, ...): run *wherever, right now*. If the future isn't done yet, that's the thread that completes it later. If it's already done, it's the thread attaching the callback.
+- **Async** (`thenApplyAsync(fn, executor)`): always submit to the executor. Without an executor argument, that means the common pool.
+
+## Why it matters
+
+Plain `thenApply` is cheap, but you don't control where it runs. Put heavy work there and you might be running it on an HTTP client's I/O thread, or on your request thread.
+
+## Rule of thumb
+
+Tiny transformations: `thenApply`. Slow or blocking work: `thenApplyAsync` with an executor you own.

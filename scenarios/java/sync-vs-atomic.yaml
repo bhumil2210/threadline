@@ -1,6 +1,7 @@
 id: sync-vs-atomic
 lang: java
 group: Shared state
+order: 2
 title: synchronized waits, AtomicInteger retries
 summary: Two ways to fix count++. One makes threads wait their turn, the other lets them retry.
 duration: 8

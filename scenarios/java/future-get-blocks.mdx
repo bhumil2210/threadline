@@ -1,0 +1,20 @@
+## What just happened
+
+`submit()` returned a `Future` straight away, and main kept working. When main called `f.get()`, the result wasn't ready, so main parked (`WAITING`) until the pool thread finished `slowCall()`.
+
+## A Future is a receipt
+
+Think of it like a ticket at a coffee counter. You get it at once, and you can do other things. `get()` is walking to the counter and standing there until your order is ready.
+
+## Use it well
+
+- Start the slow work **as early as possible** and call `get()` **as late as possible**. The gap between them is the time you save.
+- Use a timeout, so a stuck task can't freeze the caller forever:
+
+```java
+String result = f.get(2, TimeUnit.SECONDS); // throws TimeoutException
+```
+
+## Its limits
+
+With a plain `Future`, the only way to use the result is to block on it. You can't say "when this is done, do that". That's what `CompletableFuture` adds, starting with the next scenario.

@@ -1,0 +1,24 @@
+## What just happened
+
+Three price calls started at the same time on three threads. `allOf(a, b, c).join()` kept main waiting until the last one, B, finished. After that, `a.join()`, `b.join()` and `c.join()` returned instantly, because every result was already there.
+
+## Fan-out, fan-in
+
+Start many independent calls (fan out), then wait once for all of them (fan in). Total time ≈ the slowest call. Run them one by one instead and you pay the sum.
+
+For a list of calls:
+
+```java
+List<CompletableFuture<Integer>> calls = shops.stream()
+    .map(s -> CompletableFuture.supplyAsync(() -> priceAt(s), io))
+    .toList();
+CompletableFuture.allOf(calls.toArray(CompletableFuture[]::new)).join();
+List<Integer> prices = calls.stream().map(CompletableFuture::join).toList();
+```
+
+## Watch out
+
+- `allOf` returns `CompletableFuture<Void>`. It tells you *when*, not *what*. Read the results from the original futures.
+- If one call fails, `allOf` fails too, but only after **all** calls have finished.
+- Want the first answer instead of all of them? Use `anyOf`.
+- Size the executor. Fanning out to 100 calls on a pool of 3 threads still runs 3 at a time.

@@ -1,0 +1,24 @@
+## What just happened
+
+`count++` looks like one step, but the CPU does three: read `count`, add 1, write it back. T2 read `count` before T1 had written its new value, so both threads started from 0 and both wrote 1. One update was lost.
+
+## Why it's hard to catch
+
+The bad interleaving needs both threads to land in the same tiny window. On a quiet laptop that rarely happens, so tests pass. Under real load, with more threads and more cores, it happens all the time.
+
+Each thread can also keep its own cached copy of `count`. Without synchronization, Java doesn't promise that one thread ever sees another's write.
+
+## How to fix it
+
+Make the read-add-write a single step that no other thread can break into:
+
+```java
+synchronized (lock) { count++; }    // one thread at a time
+atomicCount.incrementAndGet();       // one atomic step, no lock
+```
+
+The next scenario compares both fixes.
+
+## Rule of thumb
+
+If two threads touch the same variable and at least one of them writes, you need synchronization. `volatile` isn't enough here: it makes the write visible, but read-add-write is still three steps.

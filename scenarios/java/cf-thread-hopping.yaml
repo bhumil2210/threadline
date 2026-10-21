@@ -1,0 +1,42 @@
+id: cf-thread-hopping
+lang: java
+group: CompletableFuture
+order: 6
+title: Which thread runs the callback?
+summary: thenApply vs thenApplyAsync. The same callback can run on three different threads, depending on how and when you attach it.
+duration: 8
+lanes: [main, io-1, cpu-1]
+code: |
+  var ioPool = Executors.newSingleThreadExecutor(r -> new Thread(r, "io-1"));
+  var cpuPool = Executors.newSingleThreadExecutor(r -> new Thread(r, "cpu-1"));
+
+  var f = CompletableFuture.supplyAsync(() -> slowCall(), ioPool);
+  var a = f.thenApply(r -> parse(r));               // non-async: no thread of its own
+  var b = f.thenApplyAsync(r -> parse(r), cpuPool); // async: submitted to cpuPool
+
+  var done = CompletableFuture.completedFuture("cached");
+  done.thenApply(r -> parse(r));            // already done: runs right here
+events:
+  - { id: m1, lane: main, start: 0, end: 1, type: run, label: "supplyAsync", line: 4 }
+  - { id: m2, lane: main, start: 1, end: 2, type: run, label: "thenApply", line: 5 }
+  - { id: m3, lane: main, start: 2, end: 3, type: run, label: "thenApplyAsync", line: 6 }
+  - { id: m4, lane: main, start: 3, end: 4, type: run, label: "completedFuture", line: 8 }
+  - { id: m5, lane: main, start: 4, end: 5, type: run, label: "parse(cached)", line: 9 }
+  - { id: s, lane: io-1, start: 1, end: 6, type: io, label: "slowCall()", line: 4 }
+  - { id: pa, lane: io-1, start: 6, end: 7, type: run, label: "parse", line: 5 }
+  - { id: pb, lane: cpu-1, start: 6, end: 7, type: run, label: "parse", line: 6 }
+deps:
+  - [m1, s]
+  - [s, pb]
+markers:
+  - { at: 0, text: "supplyAsync hands slowCall() to ioPool. main moves on at once.", line: 4 }
+  - { at: 1, text: "thenApply is only attached. f isn't done, so there is nothing to run yet.", line: 5 }
+  - { at: 2, text: "thenApplyAsync is attached too. It will be submitted to cpuPool later.", line: 6 }
+  - { at: 4, text: "done is already complete, so its thenApply runs immediately, on main.", line: 9 }
+  - { at: 6, text: "slowCall() returns on io-1. Plain thenApply runs right there, on io-1. The async one goes to cpu-1.", line: 5 }
+state:
+  - { at: 0, key: f, value: "running" }
+  - { at: 6, key: f, value: "done" }
+  - { at: 3, key: done, value: "done" }
+takeaway: "Non-async means: run wherever, right now. That's the thread that completes the future, or the caller if it's already done. Async means: submit to an executor."
+gotcha: A heavy thenApply can stall an HTTP client's I/O threads. For slow work, use thenApplyAsync with your own executor.

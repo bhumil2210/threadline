@@ -1,0 +1,23 @@
+## What just happened
+
+The latch started at 3. main called `await()` and parked. Each loader called `countDown()` when it finished: 3, 2, 1, 0. At 0 the latch opened and main went on to "start serving".
+
+## When to use it
+
+When one thread must wait for a fixed number of things to happen:
+
+- start a server only after the DB, cache and config are loaded
+- in tests, wait until N worker threads have reached a certain point
+
+The things counting down don't have to be threads. Any code can call `countDown()`.
+
+## Watch out
+
+- **Always count down in `finally`.** If a loader throws before `countDown()`, the count never reaches 0 and `await()` waits forever.
+
+```java
+try { load(name); } finally { ready.countDown(); }
+```
+
+- Or put a limit on the wait: `ready.await(30, TimeUnit.SECONDS)` returns `false` if time ran out.
+- A latch is single-use. Once it hits 0 it stays open. For a reusable "everyone meet here" point, use `CyclicBarrier` or `Phaser`.

@@ -1,0 +1,35 @@
+id: future-get-blocks
+lang: java
+group: Executors
+order: 4
+title: Future.get() makes you wait
+summary: submit() gives you a Future right away. get() trades it for the result, and blocks until the result exists.
+duration: 7
+lanes: [main, pool-1-thread-1]
+code: |
+  ExecutorService pool = Executors.newSingleThreadExecutor();
+  Future<String> f = pool.submit(() -> slowCall()); // returns right away
+  doOtherWork();                                    // main is still free
+  String result = f.get();                          // main blocks here
+  System.out.println(result);
+  pool.shutdown();
+events:
+  - { id: s, lane: main, start: 0, end: 1, type: run, label: "submit()", line: 2 }
+  - { id: o, lane: main, start: 1, end: 3, type: run, label: "doOtherWork()", line: 3 }
+  - { id: g, lane: main, start: 3, end: 6, type: wait, label: "f.get(): WAITING", line: 4 }
+  - { id: p, lane: main, start: 6, end: 7, type: run, label: "println", line: 5 }
+  - { id: c, lane: pool-1-thread-1, start: 1, end: 6, type: io, label: "slowCall()", line: 2 }
+deps:
+  - [s, c]
+  - [c, p]
+markers:
+  - { at: 0, text: "submit() hands slowCall() to the pool and returns a Future at once.", line: 2 }
+  - { at: 1, text: "main keeps working while the pool thread runs slowCall().", line: 3 }
+  - { at: 3, text: "f.get() has no result yet. main parks: it is WAITING and does nothing.", line: 4 }
+  - { at: 6, text: "slowCall() returns. get() wakes main up with the result.", line: 4 }
+state:
+  - { at: 1, key: f, value: "not done" }
+  - { at: 6, key: f, value: "done" }
+  - { at: 6, key: result, value: "\"data\"" }
+takeaway: A Future is a receipt, not a result. Do useful work first, and call get() as late as you can.
+gotcha: Calling get() right after submit() makes the pool pointless, because you wait anyway. If you need a timeout, use get(2, SECONDS) so a stuck task can't freeze the caller forever.

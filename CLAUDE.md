@@ -55,7 +55,8 @@ Out of scope for v1: backend, database, user accounts, live "run your own code" 
 ```yaml
 id: cf-thread-hopping
 lang: java                     # java | go | rust
-group: CompletableFuture       # sidebar section
+group: CompletableFuture       # section on the index page
+order: 6                       # reading order within the language
 title: Which thread runs the callback?
 summary: One-line description shown under the title.
 duration: 10                   # abstract time units
@@ -64,7 +65,7 @@ code: |
   var f = supplyAsync(() -> slowCall(), ioPool);
   ...
 events:                        # what each lane does over time
-  - { id: a, lane: io-1, start: 1, end: 6, type: io,  label: "slowCall()", line: 1 }
+  - { id: a, lane: io-1, start: 1, end: 6, type: io,  label: "slowCall()", line: 1 }   # optional short: "call" for narrow blocks
   - { id: b, lane: io-1, start: 6, end: 7, type: run, label: "thenApply",  line: 3 }
 deps:                          # arrows: end of one event → start of another
   - [a, b]
@@ -81,7 +82,8 @@ Rules:
 - `type` ∈ `run | io | blocked | wait | lock | error | fail | skip`.
 - Events on the same lane must not overlap.
 - Every `deps` id and `line` number must exist (enforce in Zod with refinements).
-- `markers` drive step navigation: next/previous jump between marker times.
+- `markers` drive step navigation: next/previous jump between marker times. Markers must be in strictly increasing time order.
+- Write-up: `scenarios/<lang>/<id>.mdx` next to the YAML, rendered under the player. Sections: What just happened, why, when to use it, watch out. Short sentences, under ~250 words.
 
 ## Player behavior
 
@@ -132,16 +134,16 @@ Accuracy is the product. A wrong thread assignment teaches a wrong mental model.
 - [x] Player component (timeline, code panel, state panel, caption, controls): `site/src/components/Player.svelte`, logic in `site/src/lib/player.ts`
 - [x] Scenario: race condition on `count++`
 - [x] Scenario: `synchronized` vs `AtomicInteger` (shows an explicit CAS loop; `incrementAndGet` is one atomic instruction on modern CPUs, so it has no visible retry)
-- [ ] Scenario: CompletableFuture pipeline (`supplyAsync` → `thenApply` → `thenAccept`)
-- [ ] Scenario: `thenApply` vs `thenApplyAsync` — which thread runs the callback
-- [ ] Scenario: `allOf` fan-out
-- [ ] Verification programs + CI for all 5 (2/5 done)
+- [x] Scenario: CompletableFuture pipeline (`supplyAsync` → `thenApply` → `thenAccept`)
+- [x] Scenario: `thenApply` vs `thenApplyAsync` — which thread runs the callback
+- [x] Scenario: `allOf` fan-out
+- [x] Verification programs + CI for all 5
 - [x] Deploy to Vercel
 - [ ] Test with 3–4 target users
 
 ## Scenario backlog
 
-**Java:** race condition · synchronized · AtomicInteger/CAS · fixed thread pool + queue · `Future.get()` blocks · CompletableFuture pipeline · thenApply vs thenApplyAsync · thenCompose vs thenCombine · allOf fan-out · exceptionally/handle · CountDownLatch · Semaphore · BlockingQueue producer/consumer · virtual threads (mount/unmount on carriers)
+**Java (all 13 done, in `scenarios/java`):** race condition · synchronized · AtomicInteger/CAS · fixed thread pool + queue · `Future.get()` blocks · CompletableFuture pipeline · thenApply vs thenApplyAsync · thenCompose vs thenCombine · allOf fan-out · exceptionally/handle · CountDownLatch · Semaphore · BlockingQueue producer/consumer · virtual threads (mount/unmount on carriers)
 
 **Go:** goroutines + WaitGroup · unbuffered channel handoff · worker pool on a buffered channel + close · select with timeout/context · sync.Mutex
 

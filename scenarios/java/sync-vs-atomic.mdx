@@ -1,0 +1,20 @@
+## What just happened
+
+Both counters ended at 2, but they got there differently.
+
+- **synchronized**: sync-1 took the lock (the *monitor*). sync-2 couldn't enter, so it sat `BLOCKED` and did nothing until sync-1 left.
+- **AtomicInteger with compareAndSet (CAS)**: both threads went ahead. CAS says "write the new value only if the value is still what I read". atomic-2's CAS failed because atomic-1 got there first, so atomic-2 read again and retried. Nobody waited.
+
+## Which one to use
+
+| | synchronized | Atomic (CAS) |
+| --- | --- | --- |
+| Under contention | threads wait | threads retry |
+| Protects | any block of code | one variable |
+| Good for | updating several fields together | counters, flags, single values |
+
+## Tip
+
+You rarely write the CAS loop yourself. `incrementAndGet()`, `addAndGet()` and `updateAndGet(x -> ...)` do it for you, and on modern CPUs `incrementAndGet()` is usually a single atomic instruction.
+
+Once two values must change together, like a balance and a transaction log, use a lock. Two separate atomics can't keep two values consistent.

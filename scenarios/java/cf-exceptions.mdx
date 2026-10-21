@@ -1,0 +1,22 @@
+## What just happened
+
+Shop A threw an exception, so the future held an error instead of a value. `thenApply(p -> p * 2)` was **skipped**: there was no `p` to double. `exceptionally` caught the error and replaced it with `-1`, and from there the chain carried on normally.
+
+Shop B worked, and `handle` ran with `(12, null)`.
+
+## The three tools
+
+| | runs on success | runs on failure | can change the result |
+| --- | --- | --- | --- |
+| `exceptionally(ex -> ...)` | no | yes | yes |
+| `handle((v, ex) -> ...)` | yes | yes | yes |
+| `whenComplete((v, ex) -> ...)` | yes | yes | no (only looks, e.g. for logging) |
+
+## Think of it like try/catch
+
+An exception jumps over every following step until it reaches one that handles it, just like code after a `throw` is skipped until the `catch`.
+
+## Watch out
+
+- The `ex` you receive is usually a `CompletionException` wrapping the real error. Check `ex.getCause()`.
+- An exception nobody handles doesn't print anything. It sits inside the future until someone calls `join()` or `get()`, and if nobody does, it's silently lost.

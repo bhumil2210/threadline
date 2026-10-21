@@ -1,5 +1,7 @@
 <script module lang="ts">
-  export const LABEL_W = 92;
+  /** Width of the lane-name column: fits the longest lane name in 12px Plex Mono. */
+  export const labelWidth = (lanes: readonly string[]) =>
+    Math.max(84, Math.ceil(Math.max(...lanes.map((l) => l.length)) * 7.3) + 22);
 </script>
 
 <script lang="ts">
@@ -10,21 +12,27 @@
     t: number;
     activeIds: Set<string>;
     ppu: number;
+    labelW: number;
+    /** Narrow screens: lane names sit above each row instead of in a column. Same height either way. */
+    compact: boolean;
   }
 
-  let { timeline, t, activeIds, ppu }: Props = $props();
+  let { timeline, t, activeIds, ppu, labelW, compact }: Props = $props();
 
   const AXIS_H = 32;
   const LANE_H = 44;
-  const BLOCK_H = 28;
+  const BLOCK_H = $derived(compact ? 24 : 28);
+  const BLOCK_TOP = $derived(compact ? 17 : (LANE_H - 28) / 2);
   const PAD_R = 18; // keep in sync with Player
   const GAP = 1.5;
-  const CHAR_W = 6.7; // IBM Plex Mono at 11px
+  // IBM Plex Mono advance width per character at 11px and at the smaller fallback size.
+  const CHAR_W = 6.7;
+  const SMALL_CHAR_W = 5.5;
 
   const uid = $props.id();
-  const x = (time: number) => LABEL_W + time * ppu;
+  const x = (time: number) => labelW + time * ppu;
   const laneIndex = (lane: string) => timeline.lanes.indexOf(lane);
-  const blockY = (lane: string) => AXIS_H + laneIndex(lane) * LANE_H + (LANE_H - BLOCK_H) / 2;
+  const blockY = (lane: string) => AXIS_H + laneIndex(lane) * LANE_H + BLOCK_TOP;
   const midY = (lane: string) => blockY(lane) + BLOCK_H / 2;
 
   const width = $derived(x(timeline.duration) + PAD_R);
@@ -61,9 +69,31 @@
   );
 
   const activeLanes = $derived(new Set(timeline.events.filter((e) => activeIds.has(e.id)).map((e) => e.lane)));
-  const fits = (e: TimelineEvent) => e.label.length * CHAR_W + 12 <= (e.end - e.start) * ppu - GAP * 2;
+  /** The label that fits the block: full, else `short`, each at normal then small size. None: the <title> still has it. */
+  const fitLabel = (e: TimelineEvent): { text: string; small: boolean } | null => {
+    const room = (e.end - e.start) * ppu - GAP * 2 - 10;
+    for (const text of e.short ? [e.label, e.short] : [e.label]) {
+      if (text.length * CHAR_W <= room) return { text, small: false };
+      if (text.length * SMALL_CHAR_W <= room) return { text, small: true };
+    }
+    return null;
+  };
 </script>
 
+<div class="tl" style:width="{width}px">
+<!-- Lane names are HTML, pinned with position: sticky, so they stay visible while the timeline scrolls. -->
+<div
+  class="lane-names"
+  class:compact
+  style:width="{labelW}px"
+  style:--w="{labelW}px"
+  style:height="{height}px"
+  aria-hidden="true"
+>
+  {#each timeline.lanes as lane, i (lane)}
+    <span class:busy={activeLanes.has(lane)} style:top="{AXIS_H + i * LANE_H}px" style:height="{LANE_H}px">{lane}</span>
+  {/each}
+</div>
 <svg
   class="timeline"
   {width}
@@ -81,7 +111,7 @@
       <path d="M0 0 L8 4 L0 8 z" fill="var(--muted)" />
     </marker>
     <clipPath id="{uid}-reveal">
-      <rect x={LABEL_W} y="0" width={Math.max(0, t * ppu)} {height} />
+      <rect x={labelW} y="0" width={Math.max(0, t * ppu)} {height} />
     </clipPath>
   </defs>
 
@@ -93,10 +123,7 @@
     {/each}
   </g>
   {#each timeline.lanes as lane, i (lane)}
-    <g class="lane" class:busy={activeLanes.has(lane)}>
-      <line class="lane-rule" x1="0" x2={width} y1={AXIS_H + (i + 1) * LANE_H} y2={AXIS_H + (i + 1) * LANE_H} />
-      <text class="lane-label" x="10" y={AXIS_H + i * LANE_H + LANE_H / 2} dominant-baseline="central">{lane}</text>
-    </g>
+    <line class="lane-rule" x1="0" x2={width} y1={AXIS_H + (i + 1) * LANE_H} y2={AXIS_H + (i + 1) * LANE_H} />
   {/each}
 
   <!-- Under the blocks, so they never cross a label. -->
@@ -107,6 +134,7 @@
   <!-- Revealed up to t by one clip rect: a single attribute write per frame. -->
   <g clip-path="url(#{uid}-reveal)">
     {#each timeline.events as e (e.id)}
+      {@const fit = fitLabel(e)}
       <g class="block {e.type}" class:active={activeIds.has(e.id)}>
         <title>{e.lane}: {e.label} ({e.type})</title>
         <rect
@@ -117,8 +145,10 @@
           rx="4"
           fill={e.type === 'blocked' ? `url(#${uid}-hatch)` : undefined}
         />
-        {#if fits(e)}
-          <text x={x(e.start) + GAP + 7} y={midY(e.lane)} dominant-baseline="central">{e.label}</text>
+        {#if fit}
+          <text class:small={fit.small} x={x(e.start) + GAP + 6} y={midY(e.lane)} dominant-baseline="central"
+            >{fit.text}</text
+          >
         {/if}
       </g>
     {/each}
@@ -129,6 +159,7 @@
     <path d="M-5 {AXIS_H - 10} h10 l-5 6 z" />
   </g>
 </svg>
+</div>
 
 <style>
   .timeline {
@@ -151,18 +182,53 @@
     stroke: var(--border);
   }
 
-  .lane-label {
-    fill: var(--muted);
-    font-size: 12px;
-    transition: fill 120ms;
+  .tl {
+    display: flex;
   }
 
-  .lane.busy .lane-label {
-    fill: var(--text);
+  .lane-names {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    flex: none;
+    margin-right: calc(-1 * var(--w, 0px));
+    background: linear-gradient(90deg, var(--surface) 88%, transparent);
+    pointer-events: none;
+  }
+
+  .lane-names span {
+    position: absolute;
+    left: 0;
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
+    font: 12px var(--font-mono);
+    color: var(--muted);
+    white-space: nowrap;
+    transition: color 120ms;
+  }
+
+  .lane-names span.busy {
+    color: var(--text);
+  }
+
+  .lane-names.compact {
+    background: none;
+  }
+
+  .lane-names.compact span {
+    align-items: flex-start;
+    padding: 2px 0 0 8px;
+    font-size: 10px;
+    line-height: 14px;
   }
 
   .block rect {
     stroke-width: 1.25;
+  }
+
+  .block text.small {
+    font-size: 9px;
   }
 
   .block text {
@@ -259,7 +325,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     .dep,
-    .lane-label {
+    .lane-names span {
       transition: none;
     }
   }

@@ -1,0 +1,41 @@
+id: semaphore
+lang: java
+group: Coordination
+order: 11
+title: Limit concurrency with a Semaphore
+summary: Four threads want to call an API that allows two at a time. A Semaphore with 2 permits keeps the rest waiting.
+duration: 7
+lanes: [worker-1, worker-2, worker-3, worker-4]
+code: |
+  Semaphore permits = new Semaphore(2); // at most 2 at a time
+  for (int i = 1; i <= 4; i++) {
+      int id = i;
+      new Thread(() -> {
+          permits.acquireUninterruptibly(); // waits if both permits are taken
+          try { callApi(id); }
+          finally { permits.release(); }    // hand the permit back
+      }, "worker-" + id).start();
+  }
+events:
+  - { id: c1, lane: worker-1, start: 0, end: 3, type: io, label: "callApi(1)", line: 6 }
+  - { id: c2, lane: worker-2, start: 0, end: 4, type: io, label: "callApi(2)", line: 6 }
+  - { id: w3, lane: worker-3, start: 0, end: 3, type: wait, label: "acquire()", line: 5 }
+  - { id: c3, lane: worker-3, start: 3, end: 6, type: io, label: "callApi(3)", line: 6 }
+  - { id: w4, lane: worker-4, start: 0, end: 4, type: wait, label: "acquire()", line: 5 }
+  - { id: c4, lane: worker-4, start: 4, end: 6, type: io, label: "callApi(4)", line: 6 }
+deps:
+  - [c1, c3]
+  - [c2, c4]
+markers:
+  - { at: 0, text: "Four threads, two permits. worker-1 and worker-2 take them; 3 and 4 park in acquire().", line: 5 }
+  - { at: 3, text: "worker-1 releases its permit. worker-3 wakes up and takes it.", line: 7 }
+  - { at: 4, text: "worker-2 releases; worker-4 takes that permit. Never more than 2 inside callApi.", line: 7 }
+  - { at: 6, text: "Everyone is done. Both permits are free again.", line: 7 }
+state:
+  - { at: 0, key: free permits, value: "0" }
+  - { at: 6, key: free permits, value: "2" }
+  - { at: 0, key: waiting, value: "worker-3, worker-4" }
+  - { at: 3, key: waiting, value: "worker-4" }
+  - { at: 4, key: waiting, value: "none" }
+takeaway: A Semaphore is a pile of permits. acquire() takes one or waits; release() gives one back. Use it to cap how many threads do something at once.
+gotcha: Always release in finally. A permit lost to an exception is gone for good, and your limit quietly shrinks.

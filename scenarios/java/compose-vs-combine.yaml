@@ -1,0 +1,45 @@
+id: compose-vs-combine
+lang: java
+group: CompletableFuture
+order: 7
+title: thenCompose vs thenCombine
+summary: Dependent calls run one after another. Independent calls run side by side, then merge.
+duration: 12
+lanes: [main, io-1, io-2]
+code: |
+  // thenCompose: step 2 needs step 1's result, so they run one after another
+  Order last = fetchUser(42)
+      .thenCompose(user -> fetchLastOrder(user))
+      .join();
+
+  // thenCombine: two independent calls run at the same time, then merge
+  String page = fetchUser(42)
+      .thenCombine(fetchWeather(), (user, weather) -> render(user, weather))
+      .join();
+events:
+  - { id: m1, lane: main, start: 0, end: 1, type: run, label: "start chain", line: 2 }
+  - { id: m2, lane: main, start: 1, end: 7, type: wait, label: "join()", line: 4 }
+  - { id: m3, lane: main, start: 7, end: 8, type: run, label: "start both", line: 8 }
+  - { id: m4, lane: main, start: 8, end: 12, type: wait, label: "join()", line: 9 }
+  - { id: u1, lane: io-1, start: 1, end: 3, type: io, label: "fetchUser", line: 2 }
+  - { id: o1, lane: io-2, start: 3, end: 7, type: io, label: "fetchLastOrder", line: 3 }
+  - { id: u2, lane: io-1, start: 8, end: 10, type: io, label: "fetchUser", line: 7 }
+  - { id: w, lane: io-2, start: 8, end: 11, type: io, label: "fetchWeather", line: 8 }
+  - { id: r, lane: io-2, start: 11, end: 12, type: run, label: "render", line: 8 }
+deps:
+  - [m1, u1]
+  - [u1, o1]
+  - [m3, u2]
+  - [m3, w]
+  - [u2, r]
+markers:
+  - { at: 0, text: "thenCompose: fetchLastOrder needs the user, so it can't start until fetchUser is done.", line: 3 }
+  - { at: 3, text: "fetchUser is done. Only now can fetchLastOrder start. The two waits add up.", line: 3 }
+  - { at: 7, text: "thenCombine: the weather doesn't need the user, so both calls start at once.", line: 8 }
+  - { at: 10, text: "fetchUser is done first. thenCombine holds its result and waits for the other.", line: 8 }
+  - { at: 11, text: "fetchWeather is done too, so render runs with both results.", line: 8 }
+state:
+  - { at: 7, key: last, value: "Order[id=7]" }
+  - { at: 12, key: page, value: "\"Ada, it's sunny\"" }
+takeaway: thenCompose chains calls that depend on each other, one after another. thenCombine runs independent calls side by side and merges the two results.
+gotcha: thenApply(user -> fetchLastOrder(user)) compiles, but gives you a future inside a future. When your function returns a CompletableFuture, use thenCompose.

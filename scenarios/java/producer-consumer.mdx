@@ -1,0 +1,24 @@
+## What just happened
+
+The consumer started first and parked in `take()`, because the queue was empty. The producer put `a`, which woke the consumer. The producer then filled the queue with `b` and `c`. With no room left, `put(d)` parked the producer. As soon as the consumer took `b`, a slot opened and `d` went in.
+
+## The queue is the contract
+
+Neither side knows about the other. They only share the queue:
+
+- `put()` waits when the queue is full: the producer slows down to the consumer's speed.
+- `take()` waits when it's empty: the consumer rests until there is work.
+
+That automatic slowing down is called **backpressure**.
+
+## Pick the right queue
+
+- `ArrayBlockingQueue(n)`: fixed size, backpressure built in. A good default.
+- `LinkedBlockingQueue()`: no limit unless you pass one. Without a limit, `put()` never waits.
+- `SynchronousQueue`: no storage at all. Each `put()` waits for a `take()`, a direct hand-off.
+
+## Stopping cleanly
+
+A common pattern is a special "poison pill" item: the producer puts a marker like `"STOP"` last, and the consumer exits when it takes it.
+
+You've already used this pattern: a `ThreadPoolExecutor`'s threads are consumers taking tasks from a `BlockingQueue`.

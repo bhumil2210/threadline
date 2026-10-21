@@ -8,5 +8,8 @@ import mdx from '@astrojs/mdx';
 export default defineConfig({
   output: 'static',
   prefetch: { prefetchAll: true, defaultStrategy: 'hover' },
+  markdown: {
+    shikiConfig: { theme: 'github-dark-default' },
+  },
   integrations: [svelte(), mdx()],
 });

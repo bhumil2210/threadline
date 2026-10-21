@@ -1,0 +1,19 @@
+## What just happened
+
+The semaphore started with 2 permits. worker-1 and worker-2 took them. worker-3 and worker-4 parked in `acquire()`. Each time a worker finished and called `release()`, one waiting worker woke up and took that permit. There were never more than 2 workers inside `callApi`.
+
+## When to use it
+
+To cap how many threads do something at the same time:
+
+- an API that allows 2 concurrent requests
+- a database that should get at most 10 connections from this service
+- limiting heavy downloads so the network isn't saturated
+
+A thread pool limits threads. A semaphore limits *one kind of work*, whichever threads happen to do it. That makes it a good fit with virtual threads, where you might have thousands of threads but only want 10 hitting the database.
+
+## Watch out
+
+- **Release in `finally`**, always. A permit lost to an exception never comes back, and your limit quietly shrinks.
+- By default it's not fair: a newly arriving thread can grab a permit before one that has waited longer. `new Semaphore(2, true)` makes it first come, first served, at some speed cost.
+- `tryAcquire(timeout)` lets you give up instead of waiting forever.
