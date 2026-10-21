@@ -1,22 +1,78 @@
 ---
 import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
 
 const scenarios = await getCollection('scenarios');
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Threadline</title>
-  </head>
-  <body>
-    <h1>Threadline</h1>
-    <ul>
-      {scenarios.map(({ data }) => (
-        <li><a href={`/${data.lang}/${data.id}`}>{data.title}</a></li>
-      ))}
-    </ul>
-  </body>
-</html>
+<Base title="Threadline: see which thread runs what">
+  <h1>See which thread runs what.</h1>
+  <p class="lead">Concurrency, animated on real thread lanes. Every scenario is checked against a real program in CI.</p>
+  <ul class="list">
+    {
+      scenarios.map(({ data }) => (
+        <li>
+          <a href={`/${data.lang}/${data.id}`}>
+            <span class="meta">{data.lang} / {data.group}</span>
+            <span class="title">{data.title}</span>
+            <span class="sum">{data.summary}</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</Base>
+
+<style>
+  h1 {
+    margin: 48px 0 8px;
+    font-size: clamp(28px, 5vw, 44px);
+    font-weight: 600;
+    line-height: 1.15;
+  }
+
+  .lead {
+    margin: 0 0 32px;
+    color: var(--muted);
+    max-width: 56ch;
+  }
+
+  .list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .list a {
+    display: grid;
+    gap: 4px;
+    height: 100%;
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    text-decoration: none;
+    transition: border-color 120ms;
+  }
+
+  .list a:hover {
+    border-color: var(--muted);
+  }
+
+  .meta {
+    font: 12px var(--font-mono);
+    color: var(--muted);
+  }
+
+  .title {
+    font-weight: 600;
+  }
+
+  .sum {
+    font-size: 14px;
+    color: var(--muted);
+  }
+</style>

@@ -7,5 +7,6 @@ import mdx from '@astrojs/mdx';
 // https://astro.build/config
 export default defineConfig({
   output: 'static',
-  integrations: [svelte(), mdx()]
+  prefetch: { prefetchAll: true, defaultStrategy: 'hover' },
+  integrations: [svelte(), mdx()],
 });

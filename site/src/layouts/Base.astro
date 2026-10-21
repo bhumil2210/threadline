@@ -1,0 +1,66 @@
+---
+import '../styles/global.css';
+import plexSans400 from '@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff2?url';
+import plexMono400 from '@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-400-normal.woff2?url';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = 'Learn concurrency by watching which thread runs what.' } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#0E1014" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preload" href={plexSans400} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={plexMono400} as="font" type="font/woff2" crossorigin />
+    <title>{title}</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/">Threadline</a>
+    </header>
+    <main>
+      <slot />
+    </main>
+  </body>
+</html>
+
+<style>
+  .site-header {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 18px var(--gutter) 0;
+  }
+
+  .brand {
+    font: 500 15px/1 var(--font-mono);
+    letter-spacing: 0.02em;
+    text-decoration: none;
+    color: var(--text);
+  }
+
+  .brand::before {
+    content: '';
+    display: inline-block;
+    width: 18px;
+    height: 3px;
+    margin-right: 8px;
+    vertical-align: middle;
+    background: linear-gradient(90deg, var(--run) 0 55%, transparent 55% 65%, var(--io) 65%);
+    border-radius: 2px;
+  }
+
+  main {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 var(--gutter) 64px;
+  }
+</style>

@@ -105,6 +105,9 @@ Dark "oscilloscope" look; the same color always means the same thread state.
 | Waiting on I/O | `#4C8DFF` at 20% fill + solid outline | `io` |
 | Blocked | `#FF8A3D` diagonal hatch + outline | `blocked` |
 | Queued / parked | `#6B7280` dashed outline | `wait` |
+| Holding lock | `#B78CFF` at 24% fill + outline | `lock` |
+| Error / failed | `#F2545B` at 22% fill + outline | `error`, `fail` |
+| Skipped | `#6B7280` dotted outline, struck label | `skip` |
 | Accent | `#FF8A3D` | time cursor, play button, step label |
 
 Fonts: IBM Plex Sans (UI), IBM Plex Mono (code, lane labels, axis). Touch targets ≥ 44 px. Text contrast ≥ 4.5:1. States must differ in lightness/pattern, not hue alone.
@@ -126,7 +129,7 @@ Accuracy is the product. A wrong thread assignment teaches a wrong mental model.
 ## Milestone 1 (current)
 
 - [x] Zod timeline schema + types (`site/src/lib/timeline.ts`)
-- [ ] Player component (timeline, code panel, state panel, caption, controls)
+- [x] Player component (timeline, code panel, state panel, caption, controls): `site/src/components/Player.svelte`, logic in `site/src/lib/player.ts`
 - [ ] Scenario: race condition on `count++`
 - [ ] Scenario: `synchronized` vs `AtomicInteger`
 - [ ] Scenario: CompletableFuture pipeline (`supplyAsync` → `thenApply` → `thenAccept`)

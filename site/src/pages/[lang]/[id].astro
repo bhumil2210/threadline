@@ -1,5 +1,8 @@
 ---
 import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Player from '../../components/Player.svelte';
+import { highlightLines } from '../../lib/highlight';
 import type { Timeline } from '../../lib/timeline';
 
 export async function getStaticPaths() {
@@ -11,17 +14,42 @@ export async function getStaticPaths() {
 }
 
 const { scenario } = Astro.props as { scenario: Timeline };
+const codeLines = await highlightLines(scenario.code, scenario.lang);
+const LANG_NAME = { java: 'Java', go: 'Go', rust: 'Rust' } as const;
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{scenario.title} · Threadline</title>
-  </head>
-  <body>
+<Base title={`${scenario.title} · Threadline`} description={scenario.summary}>
+  <header class="intro">
+    <p class="crumbs">{LANG_NAME[scenario.lang]} <span aria-hidden="true">/</span> {scenario.group}</p>
     <h1>{scenario.title}</h1>
-    <p>{scenario.summary}</p>
-    <p>{scenario.lanes.length} lanes · {scenario.events.length} events · {scenario.markers.length} steps</p>
-  </body>
-</html>
+    <p class="summary">{scenario.summary}</p>
+  </header>
+  <Player client:load timeline={scenario} codeLines={codeLines} />
+</Base>
+
+<style>
+  .intro {
+    padding: 28px 0 18px;
+  }
+
+  .crumbs {
+    margin: 0 0 6px;
+    font: 12px var(--font-mono);
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(24px, 4vw, 34px);
+    font-weight: 600;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+
+  .summary {
+    margin: 8px 0 0;
+    color: var(--muted);
+    max-width: 62ch;
+  }
+</style>

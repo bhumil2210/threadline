@@ -90,6 +90,8 @@ export const timelineSchema = baseTimeline.superRefine((t, ctx) => {
   t.markers.forEach((m, i) => {
     checkTime(m.at, ['markers', i, 'at']);
     checkLine(m.line, ['markers', i, 'line']);
+    const prev = t.markers[i - 1];
+    if (prev && m.at <= prev.at) issue(['markers', i, 'at'], 'markers must be in strictly increasing time order');
   });
   t.state.forEach((s, i) => checkTime(s.at, ['state', i, 'at']));
 });
