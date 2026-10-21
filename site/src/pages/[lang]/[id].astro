@@ -1,0 +1,27 @@
+---
+import { getCollection } from 'astro:content';
+import type { Timeline } from '../../lib/timeline';
+
+export async function getStaticPaths() {
+  const scenarios = await getCollection('scenarios');
+  return scenarios.map(({ data }) => ({
+    params: { lang: data.lang, id: data.id },
+    props: { scenario: data },
+  }));
+}
+
+const { scenario } = Astro.props as { scenario: Timeline };
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{scenario.title} · Threadline</title>
+  </head>
+  <body>
+    <h1>{scenario.title}</h1>
+    <p>{scenario.summary}</p>
+    <p>{scenario.lanes.length} lanes · {scenario.events.length} events · {scenario.markers.length} steps</p>
+  </body>
+</html>
