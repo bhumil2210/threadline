@@ -28,7 +28,7 @@ Goal: fast first load and a 60 fps player on mid-range phones. Every page ships 
 | Validation | Zod 4 via content collection schemas. Build-time only, never shipped to the client |
 | Navigation | Astro prefetch on hover + cross-document View Transitions between scenarios |
 | Fonts | IBM Plex Sans + Mono, self-hosted, Latin subset, `woff2`, preload the UI font, `font-display: swap` |
-| Hosting | Vercel (static), preview per PR |
+| Hosting | Vercel (static). Live: https://threadline-gold-nine.vercel.app. Push to `main` deploys production; every PR gets a preview URL. Project root dir is `site/` |
 | Analytics | Plausible or Umami (script < 2 KB) |
 
 Performance budget (enforce with Lighthouse CI on PRs):
@@ -136,7 +136,8 @@ Accuracy is the product. A wrong thread assignment teaches a wrong mental model.
 - [ ] Scenario: `thenApply` vs `thenApplyAsync` — which thread runs the callback
 - [ ] Scenario: `allOf` fan-out
 - [ ] Verification programs + CI for all 5
-- [ ] Deploy to Vercel; test with 3–4 target users
+- [x] Deploy to Vercel
+- [ ] Test with 3–4 target users
 
 ## Scenario backlog
 
