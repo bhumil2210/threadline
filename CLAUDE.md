@@ -130,12 +130,12 @@ Accuracy is the product. A wrong thread assignment teaches a wrong mental model.
 
 - [x] Zod timeline schema + types (`site/src/lib/timeline.ts`)
 - [x] Player component (timeline, code panel, state panel, caption, controls): `site/src/components/Player.svelte`, logic in `site/src/lib/player.ts`
-- [ ] Scenario: race condition on `count++`
-- [ ] Scenario: `synchronized` vs `AtomicInteger`
+- [x] Scenario: race condition on `count++`
+- [x] Scenario: `synchronized` vs `AtomicInteger` (shows an explicit CAS loop; `incrementAndGet` is one atomic instruction on modern CPUs, so it has no visible retry)
 - [ ] Scenario: CompletableFuture pipeline (`supplyAsync` → `thenApply` → `thenAccept`)
 - [ ] Scenario: `thenApply` vs `thenApplyAsync` — which thread runs the callback
 - [ ] Scenario: `allOf` fan-out
-- [ ] Verification programs + CI for all 5
+- [ ] Verification programs + CI for all 5 (2/5 done)
 - [x] Deploy to Vercel
 - [ ] Test with 3–4 target users
 

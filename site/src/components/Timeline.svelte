@@ -190,6 +190,15 @@
     stroke: var(--blocked);
   }
 
+  /* A dark halo keeps the label readable over the hatch. */
+  .blocked text {
+    font-weight: 500;
+    paint-order: stroke;
+    stroke: var(--surface);
+    stroke-width: 4px;
+    stroke-linejoin: round;
+  }
+
   .wait rect {
     fill: transparent;
     stroke: var(--wait);
