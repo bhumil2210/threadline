@@ -3,6 +3,27 @@
 @import '@fontsource/ibm-plex-mono/latin-400.css';
 /* Only 400 and 600 ship: fewer font files on first load. CSS weight 500 falls back to 400. */
 
+/* Metric-matched fallbacks (from @capsizecss/metrics): text keeps its size and line breaks when
+   Plex arrives, so the font swap causes no layout shift. Liberation fonts are Linux's metric
+   clones of Arial / Courier New. */
+@font-face {
+  font-family: 'Plex Sans Fallback';
+  src: local('Arial'), local('ArialMT'), local('Liberation Sans'), local('Arimo');
+  size-adjust: 101.17%;
+  ascent-override: 101.32%;
+  descent-override: 27.18%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Plex Mono Fallback';
+  src: local('Courier New'), local('CourierNewPSMT'), local('Liberation Mono'), local('Cousine');
+  size-adjust: 99.98%;
+  ascent-override: 102.52%;
+  descent-override: 27.5%;
+  line-gap-override: 0%;
+}
+
 /* Dark is the default. Light applies when the system prefers it (and the user hasn't picked dark),
    or when the user picked light with the header toggle. Both palettes keep text at >= 4.5:1. */
 :root {
@@ -30,8 +51,8 @@
   --lock: #b78cff;
   --error: #f2545b;
 
-  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-sans: 'IBM Plex Sans', 'Plex Sans Fallback', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Plex Mono Fallback', ui-monospace, 'SF Mono', Menlo, monospace;
 
   --radius: 10px;
   --gutter: 16px;
