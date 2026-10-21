@@ -62,8 +62,10 @@ class SyncVsAtomicTest {
     void atomicThreadsNeverBlock() throws Exception {
         Set<Thread.State> seen = ConcurrentHashMap.newKeySet();
         CountDownLatch go = new CountDownLatch(1);
+        CountDownLatch pastGate = new CountDownLatch(2);
         Runnable task = () -> {
             awaitQuietly(go);
+            pastGate.countDown();
             for (int i = 0; i < 5_000_000; i++) Main.atomicIncrement();
         };
         Thread a1 = new Thread(task, "atomic-1");
@@ -71,6 +73,8 @@ class SyncVsAtomicTest {
         a1.start();
         a2.start();
         go.countDown();
+        // Threads are legitimately WAITING on the start gate; only sample once both are past it.
+        pastGate.await();
         while (a1.isAlive() || a2.isAlive()) {
             for (Thread t : new Thread[] {a1, a2}) if (t.isAlive()) seen.add(t.getState());
             Thread.onSpinWait();
