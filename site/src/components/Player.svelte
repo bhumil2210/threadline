@@ -146,7 +146,9 @@
   $effect(() => {
     if (!ready) return;
     const hash = `#step-${stepIdx + 1}`;
-    if (location.hash !== hash) history.replaceState(null, '', hash);
+    // Leave other anchors (e.g. #explanation) alone; only own the URL when it's empty or a step link.
+    const ours = location.hash === '' || /^#step-\d+$/.test(location.hash);
+    if (ours && location.hash !== hash) history.replaceState(null, '', hash);
   });
 
   onMount(() => {
@@ -431,11 +433,11 @@
     height: 52px;
     background: var(--accent);
     border-color: var(--accent);
-    color: #1a0d03;
+    color: var(--on-accent);
   }
 
   .buttons .play:hover {
-    background: color-mix(in srgb, var(--accent) 88%, white);
+    background: color-mix(in srgb, var(--accent) 88%, var(--text));
   }
 
   .buttons svg .fill {
@@ -577,11 +579,11 @@
   }
 
   .line.hl {
-    background: color-mix(in srgb, var(--run) 10%, transparent);
+    background: var(--hl-run);
   }
 
   .line.step-line {
-    background: color-mix(in srgb, var(--accent) 13%, transparent);
+    background: var(--hl-step);
     border-left-color: var(--accent);
   }
 
@@ -590,7 +592,7 @@
     width: 3.2ch;
     margin: 0 14px 0 6px;
     text-align: right;
-    color: #4b5263;
+    color: var(--muted); /* 7:1 on the card, 5.8:1 on a highlighted line */
     user-select: none;
   }
 

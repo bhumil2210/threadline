@@ -243,7 +243,7 @@
   }
 
   .run text {
-    fill: #06231b;
+    fill: var(--on-run);
     font-weight: 500;
   }
 

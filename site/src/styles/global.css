@@ -1,9 +1,10 @@
 @import '@fontsource/ibm-plex-sans/latin-400.css';
-@import '@fontsource/ibm-plex-sans/latin-500.css';
 @import '@fontsource/ibm-plex-sans/latin-600.css';
 @import '@fontsource/ibm-plex-mono/latin-400.css';
-@import '@fontsource/ibm-plex-mono/latin-500.css';
+/* Only 400 and 600 ship: fewer font files on first load. CSS weight 500 falls back to 400. */
 
+/* Dark is the default. Light applies when the system prefers it (and the user hasn't picked dark),
+   or when the user picked light with the header toggle. Both palettes keep text at >= 4.5:1. */
 :root {
   color-scheme: dark;
 
@@ -12,11 +13,17 @@
   --surface-2: #1b1f27;
   --border: #23272f;
   --text: #e7e9ee;
+  --text-strong: #ffffff;
   --muted: #9aa3b2;
   --accent: #ff8a3d;
+  --on-accent: #1a0d03;
+  /* Code line highlights: strong enough to see, light enough to keep syntax colors >= 4.5:1. */
+  --hl-step: color-mix(in srgb, var(--accent) 13%, transparent);
+  --hl-run: color-mix(in srgb, var(--run) 10%, transparent);
 
   /* Thread states: the same color always means the same state. */
   --run: #2bd4a4;
+  --on-run: #06231b;
   --io: #4c8dff;
   --blocked: #ff8a3d;
   --wait: #6b7280;
@@ -30,6 +37,57 @@
   --gutter: 16px;
 }
 
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    color-scheme: light;
+
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --surface-2: #eef0f4;
+    --border: #dde1e8;
+    --text: #14171d;
+    --text-strong: #000000;
+    --muted: #565e6e;
+    --accent: #c2410c;
+    --on-accent: #ffffff;
+  --hl-step: color-mix(in srgb, var(--accent) 7%, transparent);
+  --hl-run: color-mix(in srgb, var(--run) 8%, transparent);
+    --hl-step: color-mix(in srgb, var(--accent) 7%, transparent);
+    --hl-run: color-mix(in srgb, var(--run) 8%, transparent);
+
+    --run: #16b388;
+    --on-run: #06231b;
+    --io: #2f6feb;
+    --blocked: #e8590c;
+    --wait: #8a93a3;
+    --lock: #7c4dff;
+    --error: #d92d35;
+  }
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #eef0f4;
+  --border: #dde1e8;
+  --text: #14171d;
+  --text-strong: #000000;
+  --muted: #565e6e;
+  --accent: #c2410c;
+  --on-accent: #ffffff;
+
+  --run: #16b388;
+  --on-run: #06231b;
+  --io: #2f6feb;
+  --blocked: #e8590c;
+  --wait: #8a93a3;
+  --lock: #7c4dff;
+  --error: #d92d35;
+}
+
+
 @view-transition {
   navigation: auto;
 }
@@ -42,6 +100,7 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -72,4 +131,43 @@ kbd {
   @view-transition {
     navigation: none;
   }
+
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Syntax colors. Each token carries both theme colors as variables (--d / --l, or Shiki's
+   --shiki-dark / --shiki-light in write-ups); these rules pick one. */
+.tk {
+  color: var(--d);
+}
+.astro-code,
+.astro-code span {
+  color: var(--shiki-dark);
+  font-style: var(--shiki-dark-font-style);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) .tk {
+    color: var(--l);
+  }
+  :root:not([data-theme='dark']) .astro-code,
+  :root:not([data-theme='dark']) .astro-code span {
+    color: var(--shiki-light);
+    font-style: var(--shiki-light-font-style);
+  }
+}
+
+:root[data-theme='light'] .tk {
+  color: var(--l);
+}
+:root[data-theme='light'] .astro-code,
+:root[data-theme='light'] .astro-code span {
+  color: var(--shiki-light);
+  font-style: var(--shiki-light-font-style);
+}
+
+.it {
+  font-style: italic;
 }

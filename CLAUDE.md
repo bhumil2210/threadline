@@ -31,8 +31,10 @@ Goal: fast first load and a 60 fps player on mid-range phones. Every page ships 
 | Hosting | Vercel (static). Live: https://threadline-gold-nine.vercel.app. Push to `main` deploys production; every PR gets a preview URL. Project root dir is `site/` |
 | Analytics | Plausible or Umami (script < 2 KB) |
 
-Performance budget (enforce with Lighthouse CI on PRs):
-- Player JS ≤ 30 KB gzip. LCP < 1.5 s on 4G. CLS 0. No long tasks > 50 ms during playback.
+Performance budget (enforced by Lighthouse CI on every PR: `site/lighthouserc.cjs`, run locally with `pnpm lighthouse`):
+- Lighthouse mobile (slow-4G simulation): performance ≥ 95, accessibility/best practices/SEO = 100, LCP ≤ 1.6 s, CLS 0, TBT ≤ 50 ms. Live LCP on Vercel measures 1.2–1.5 s.
+- Player JS ≤ 30 KB gzip (currently ~22 KB). No long tasks > 50 ms during playback.
+- CSS is inlined per page (`build.inlineStylesheets: 'always'`); only Plex Sans 400 is preloaded; fonts ship 400 and 600 only.
 - Reserve the player's height in CSS so it never shifts layout on hydration.
 - Respect `prefers-reduced-motion`: step mode on, no auto-play.
 
@@ -111,6 +113,8 @@ Dark "oscilloscope" look; the same color always means the same thread state.
 | Error / failed | `#F2545B` at 22% fill + outline | `error`, `fail` |
 | Skipped | `#6B7280` dotted outline, struck label | `skip` |
 | Accent | `#FF8A3D` | time cursor, play button, step label |
+
+Themes: dark (default) and light. The system setting decides until the user clicks the header toggle (saved in localStorage, applied in `<head>` before first paint). All colors are tokens in `site/src/styles/global.css`; never hard-code a color in a component. Code highlighting uses one class per (dark, light) color pair (`site/src/lib/highlight.ts`). Every text color must stay ≥ 4.5:1 in both themes, including on highlighted code lines.
 
 Fonts: IBM Plex Sans (UI), IBM Plex Mono (code, lane labels, axis). Touch targets ≥ 44 px. Text contrast ≥ 4.5:1. States must differ in lightness/pattern, not hue alone.
 

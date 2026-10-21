@@ -8,8 +8,11 @@ import mdx from '@astrojs/mdx';
 export default defineConfig({
   output: 'static',
   prefetch: { prefetchAll: true, defaultStrategy: 'hover' },
+  // CSS is ~3.5 KB gzipped per page: inlining saves a render-blocking round trip on slow networks.
+  build: { inlineStylesheets: 'always' },
   markdown: {
-    shikiConfig: { theme: 'github-dark-default' },
+    // Both themes as CSS variables; global.css picks one, matching the site theme.
+    shikiConfig: { themes: { dark: 'github-dark-default', light: 'github-light-default' }, defaultColor: false },
   },
   integrations: [svelte(), mdx()],
 });

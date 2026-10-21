@@ -8,3 +8,4 @@ build/
 target/
 .vercel
 .env*
+.lighthouseci/

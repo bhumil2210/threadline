@@ -27,6 +27,14 @@ jobs:
       - run: pnpm check
       - run: pnpm test
       - run: pnpm build
+      # Performance budget (see CLAUDE.md): Lighthouse mobile, 3 runs per page.
+      - run: pnpm lighthouse
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-reports
+          path: site/.lighthouseci
+          retention-days: 14
 
   verify-java:
     runs-on: ubuntu-latest
