@@ -28,7 +28,7 @@ Goal: fast first load and a 60 fps player on mid-range phones. Every page ships 
 | Validation | Zod 4 via content collection schemas. Build-time only, never shipped to the client |
 | Navigation | Astro prefetch on hover + cross-document View Transitions between scenarios |
 | Fonts | IBM Plex Sans + Mono, self-hosted, Latin subset, `woff2`, preload the UI font, `font-display: swap` |
-| Hosting | Vercel (static). Live: https://threadline-gold-nine.vercel.app. Push to `main` deploys production; every PR gets a preview URL. Project root dir is `site/` |
+| Hosting | Vercel (static). Live: https://threadline-be-fast.vercel.app (the old threadline-gold-nine domain redirects here). Push to `main` deploys production; every PR gets a preview URL. Project root dir is `site/` |
 | Analytics | Plausible or Umami (script < 2 KB) |
 
 Performance budget (enforced by Lighthouse CI on every PR: `site/lighthouserc.cjs`, run locally with `pnpm lighthouse`):
