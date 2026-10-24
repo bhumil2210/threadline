@@ -1,0 +1,55 @@
+id: race-synchronized
+lang: java
+group: Shared state
+variantOf: race-condition
+order: 2
+variant: "synchronized"
+title: Fix it with synchronized
+summary: synchronized lets one thread into increment() at a time. T2 waits, then reads the fresh value.
+duration: 10
+lanes: [main, T1, T2]
+code: |
+  static int count = 0;
+
+  static synchronized void increment() {
+      count++; // only one thread inside at a time
+  }
+
+  public static void main(String[] args) throws Exception {
+      Thread t1 = new Thread(Main::increment, "T1");
+      Thread t2 = new Thread(Main::increment, "T2");
+      t1.start();
+      t2.start();
+      t1.join();
+      t2.join();
+      System.out.println(count); // always 2
+  }
+events:
+  - { id: m1, lane: main, start: 0, end: 1, type: run, label: "t1.start()", line: 10 }
+  - { id: m2, lane: main, start: 1, end: 2, type: run, label: "t2.start()", line: 11 }
+  - { id: m3, lane: main, start: 2, end: 8, type: wait, label: "join()", line: 12 }
+  - { id: m4, lane: main, start: 8, end: 9, type: run, label: "print count", line: 14 }
+  - { id: r1, lane: T1, start: 2, end: 3, type: lock, label: "read 0", line: 4 }
+  - { id: a1, lane: T1, start: 3, end: 4, type: lock, label: "add → 1", line: 4 }
+  - { id: w1, lane: T1, start: 4, end: 5, type: lock, label: "write 1", line: 4 }
+  - { id: b2, lane: T2, start: 3, end: 5, type: blocked, label: "BLOCKED on monitor", short: "BLOCKED", line: 3 }
+  - { id: r2, lane: T2, start: 5, end: 6, type: lock, label: "read 1", line: 4 }
+  - { id: a2, lane: T2, start: 6, end: 7, type: lock, label: "add → 2", line: 4 }
+  - { id: w2, lane: T2, start: 7, end: 8, type: lock, label: "write 2", line: 4 }
+deps:
+  - [m1, r1]
+  - [m2, b2]
+  - [w1, r2]
+  - [w2, m4]
+markers:
+  - { at: 0, text: "Same program, but increment() is now synchronized.", line: 3 }
+  - { at: 2, text: "T1 enters increment() and holds the monitor: the lock on Main.class.", line: 3 }
+  - { at: 3, text: "T2 wants in too. It is BLOCKED and does nothing.", line: 3 }
+  - { at: 5, text: "T1 leaves and releases the monitor. T2 enters and reads 1, the fresh value.", line: 4 }
+  - { at: 8, text: "main prints 2. No update was lost.", line: 14 }
+state:
+  - { at: 0, key: count, value: "0" }
+  - { at: 5, key: count, value: "1" }
+  - { at: 8, key: count, value: "2" }
+takeaway: synchronized turns read-add-write into one step that no other thread can break into. The price is that other threads wait.
+gotcha: Every access needs the same lock. A synchronized write doesn't help if another method reads count without it.

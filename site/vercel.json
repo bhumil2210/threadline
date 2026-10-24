@@ -1,6 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "astro",
+  "redirects": [
+    { "source": "/java/sync-vs-atomic", "destination": "/java/race-condition/", "permanent": true },
+    { "source": "/java/cf-thread-hopping", "destination": "/java/cf-pipeline/", "permanent": true },
+    { "source": "/java/allof-fanout", "destination": "/java/compose-vs-combine/", "permanent": true }
+  ],
   "headers": [
     {
       "source": "/_astro/(.*)",

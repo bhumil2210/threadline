@@ -1,0 +1,42 @@
+id: collections-concurrent-map
+lang: java
+group: Shared state
+variantOf: thread-safe-collections
+order: 3
+variant: "ConcurrentHashMap"
+title: ConcurrentHashMap
+summary: Threads counting different words never wait for each other. Only updates to the same key take turns.
+duration: 5
+lanes: [T1, T2]
+code: |
+  static final Map<String, Integer> counts = new ConcurrentHashMap<>();
+
+  static void countWords(List<String> words) {
+      for (String w : words) {
+          counts.merge(w, 1, Integer::sum); // atomic for each key
+      }
+  }
+
+  Thread t1 = new Thread(() -> countWords(List.of("a", "a")), "T1");
+  Thread t2 = new Thread(() -> countWords(List.of("b", "a")), "T2");
+  System.out.println(new TreeMap<>(counts)); // always {a=3, b=1}
+events:
+  - { id: a1, lane: T1, start: 0, end: 1, type: run, label: "merge(a)", line: 5 }
+  - { id: a2, lane: T1, start: 1, end: 2, type: lock, label: "merge(a)", line: 5, note: "Locks only the bin that holds key a." }
+  - { id: b1, lane: T2, start: 0, end: 1, type: run, label: "merge(b)", line: 5 }
+  - { id: w2, lane: T2, start: 1, end: 2, type: blocked, label: "waits for key a", short: "BLOCKED", line: 5, note: "In a real program this wait lasts nanoseconds." }
+  - { id: a3, lane: T2, start: 2, end: 3, type: lock, label: "merge(a)", line: 5 }
+deps:
+  - [a2, a3]
+markers:
+  - { at: 0, text: "T1 counts a while T2 counts b. Different keys, so neither waits.", line: 5 }
+  - { at: 1, text: "Now both merge a. The map locks only that key's bin, so T2 waits briefly.", line: 5 }
+  - { at: 2, text: "T1 is done with a. T2 adds its 1 to the fresh value.", line: 5 }
+  - { at: 3, text: "Always {a=3, b=1}. No update is lost.", line: 11 }
+state:
+  - { at: 1, key: a, value: "1" }
+  - { at: 2, key: a, value: "2" }
+  - { at: 3, key: a, value: "3" }
+  - { at: 1, key: b, value: "1" }
+takeaway: ConcurrentHashMap locks per key (per bin), so threads on different keys don't wait. merge() and compute() update a key atomically.
+gotcha: counts.put(w, counts.get(w) + 1) still loses updates, even on a ConcurrentHashMap. Each call is safe, the pair is not. Use merge().

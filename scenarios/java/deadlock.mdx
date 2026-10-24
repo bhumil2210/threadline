@@ -1,0 +1,27 @@
+## What just happened
+
+T1 took lock A, T2 took lock B. Then each needed the other's lock. T1 waited for T2 to release B, and T2 waited for T1 to release A. Neither could move, so both stayed `BLOCKED` forever: no exception, no CPU use, just a program that stops.
+
+## Try the what-if switch
+
+**same lock order**: both threads take A first. Whoever loses the race for A waits *holding nothing*, so it can't block anyone. T1 finished, released both locks, and T2 went next.
+
+## The four conditions
+
+A deadlock needs all of these at once:
+
+1. Locks are exclusive.
+2. A thread holds one lock while waiting for another.
+3. Locks can't be taken away.
+4. There's a cycle: T1 waits for T2, which waits for T1.
+
+Break any one and deadlock is impossible. A global lock order breaks the cycle, and it's the usual fix.
+
+## Other fixes
+
+- `ReentrantLock.tryLock(timeout)`: give up and retry instead of waiting forever.
+- Hold one lock at a time, and don't call unknown code (like listeners) while holding a lock.
+
+## Finding one
+
+Take a thread dump with `jstack <pid>` or your IDE. The JVM detects monitor deadlocks and prints "Found one Java-level deadlock" with both threads and the locks they hold.

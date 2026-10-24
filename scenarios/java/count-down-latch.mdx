@@ -2,6 +2,10 @@
 
 The latch started at 3. main called `await()` and parked. Each loader called `countDown()` when it finished: 3, 2, 1, 0. At 0 the latch opened and main went on to "start serving".
 
+## Try the what-if switch
+
+**a loader throws**: config's `load()` throws before it reaches `countDown()`. The count sticks at 1, and main waits forever. The stack trace goes to config's thread, so main never hears about it.
+
 ## When to use it
 
 When one thread must wait for a fixed number of things to happen:

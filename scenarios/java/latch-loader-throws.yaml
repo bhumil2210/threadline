@@ -1,0 +1,40 @@
+id: latch-loader-throws
+lang: java
+group: Coordination
+variantOf: count-down-latch
+order: 2
+variant: "a loader throws"
+title: When a loader throws
+summary: config's load() throws before countDown(). The count sticks at 1, and main waits forever.
+duration: 8
+lanes: [main, db, cache, config]
+code: |
+  CountDownLatch ready = new CountDownLatch(3);
+  for (String name : List.of("db", "cache", "config")) {
+      new Thread(() -> {
+          load(name);        // config throws here
+          ready.countDown(); // so config never counts down
+      }, name).start();
+  }
+  ready.await(); // stuck at 1: waits forever
+  System.out.println("all loaded, start serving"); // never printed
+events:
+  - { id: m1, lane: main, start: 0, end: 1, type: run, label: "start loaders", line: 6 }
+  - { id: m2, lane: main, start: 1, end: 8, type: wait, label: "ready.await(): forever", short: "await()", line: 8 }
+  - { id: d, lane: db, start: 1, end: 5, type: io, label: "load(db)", line: 4 }
+  - { id: c, lane: cache, start: 1, end: 3, type: io, label: "load(cache)", line: 4 }
+  - { id: g, lane: config, start: 1, end: 3, type: io, label: "load(config)", line: 4 }
+  - { id: x, lane: config, start: 3, end: 4, type: error, label: "throws", line: 4 }
+  - { id: k, lane: config, start: 4, end: 5, type: skip, label: "countDown()", line: 5 }
+markers:
+  - { at: 0, text: "Same latch of 3, but loading config is going to fail.", line: 1 }
+  - { at: 3, text: "cache counts down: 2 left. config's load() throws.", line: 4 }
+  - { at: 4, text: "The exception ends config's thread. Its countDown() never runs.", line: 5 }
+  - { at: 5, text: "db counts down: 1 left. And there it stays.", line: 5 }
+  - { at: 6, text: "main waits forever. The stack trace went to config's thread; main never hears of it.", line: 8 }
+state:
+  - { at: 0, key: count, value: "3" }
+  - { at: 3, key: count, value: "2" }
+  - { at: 5, key: count, value: "1" }
+takeaway: Put countDown() in a finally block. Otherwise one failure leaves every waiter stuck.
+gotcha: Prefer await(timeout, unit) in production code. It returns false when time runs out, so you can fail loudly instead of hanging.

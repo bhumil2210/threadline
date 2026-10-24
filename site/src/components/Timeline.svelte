@@ -5,19 +5,28 @@
 </script>
 
 <script lang="ts">
-  import type { Timeline, TimelineEvent } from '../lib/timeline';
+  import type { PlayerTimeline, TimelineEvent } from '../lib/timeline';
 
   interface Props {
-    timeline: Timeline;
+    timeline: PlayerTimeline;
     t: number;
     activeIds: Set<string>;
     ppu: number;
     labelW: number;
     /** Narrow screens: lane names sit above each row instead of in a column. Same height either way. */
     compact: boolean;
+    selectedId: string | null;
+    onselect: (id: string) => void;
   }
 
-  let { timeline, t, activeIds, ppu, labelW, compact }: Props = $props();
+  let { timeline, t, activeIds, ppu, labelW, compact, selectedId, onselect }: Props = $props();
+
+  function onBlockKey(e: KeyboardEvent, id: string) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onselect(id);
+    }
+  }
 
   const AXIS_H = 32;
   const LANE_H = 44;
@@ -135,8 +144,19 @@
   <g clip-path="url(#{uid}-reveal)">
     {#each timeline.events as e (e.id)}
       {@const fit = fitLabel(e)}
-      <g class="block {e.type}" class:active={activeIds.has(e.id)}>
-        <title>{e.lane}: {e.label} ({e.type})</title>
+      <!-- Only blocks already revealed are focusable, so Tab never spoils what comes next. -->
+      <g
+        class="block {e.type}"
+        class:active={activeIds.has(e.id)}
+        class:selected={selectedId === e.id}
+        role="button"
+        tabindex={e.start <= t ? 0 : -1}
+        aria-label="{e.lane}: {e.label}"
+        aria-pressed={selectedId === e.id}
+        onclick={() => onselect(e.id)}
+        onkeydown={(ev) => onBlockKey(ev, e.id)}
+      >
+        <title>{e.lane}: {e.label}</title>
         <rect
           x={x(e.start) + GAP}
           y={blockY(e.lane)}
@@ -297,9 +317,21 @@
     text-decoration: line-through;
   }
 
+  .block {
+    cursor: pointer;
+    outline: none;
+  }
+
   .block.active rect {
     stroke: var(--text);
     stroke-width: 2;
+  }
+
+  /* After .active, so a selected block that is also running keeps the accent stroke. */
+  .block:focus-visible rect,
+  .block.selected rect {
+    stroke: var(--accent);
+    stroke-width: 2.5;
   }
 
   .dep {

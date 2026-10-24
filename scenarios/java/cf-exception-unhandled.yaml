@@ -1,0 +1,33 @@
+id: cf-exception-unhandled
+lang: java
+group: CompletableFuture
+variantOf: cf-exceptions
+order: 2
+variant: "nobody handles it"
+title: An exception nobody sees
+summary: The chain fails, but nothing reads the future. No stack trace, no log line. The error simply disappears.
+duration: 6
+lanes: [main, io-1]
+code: |
+  var order = CompletableFuture.supplyAsync(() -> priceAt("A"), io) // throws: shop is down
+      .thenAccept(p -> System.out.println("price " + p)); // skipped
+  System.out.println("main moves on");
+  // nobody calls join(), get() or exceptionally(): the error is never seen
+events:
+  - { id: m1, lane: main, start: 0, end: 1, type: run, label: "supplyAsync", line: 1 }
+  - { id: m2, lane: main, start: 1, end: 2, type: run, label: "println", line: 3 }
+  - { id: e, lane: io-1, start: 1, end: 4, type: error, label: "priceAt(A) throws", short: "throws", line: 1 }
+  - { id: s, lane: io-1, start: 4, end: 5, type: skip, label: "thenAccept", line: 2 }
+deps:
+  - [m1, e]
+markers:
+  - { at: 0, text: "The chain starts on io-1. main moves on.", line: 1 }
+  - { at: 1, text: "main prints and carries on with other work.", line: 3 }
+  - { at: 4, text: "priceAt throws. The future stores the exception instead of a value, so thenAccept is skipped.", line: 2 }
+  - { at: 5, text: "Nothing reads the future, so nobody ever sees the error. No stack trace is printed.", line: 4 }
+state:
+  - { at: 1, key: order, value: "pending" }
+  - { at: 4, key: order, value: "failed: ShopDown" }
+  - { at: 2, key: printed, value: "main moves on" }
+takeaway: A CompletableFuture's exception is seen only by whoever reads the future. Always end a chain with join(), exceptionally(), handle() or whenComplete().
+gotcha: Fire-and-forget runAsync() calls fail the same silent way. If nothing waits for the result, log errors in whenComplete.

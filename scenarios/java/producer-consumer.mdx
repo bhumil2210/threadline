@@ -2,6 +2,10 @@
 
 The consumer started first and parked in `take()`, because the queue was empty. The producer put `a`, which woke the consumer. The producer then filled the queue with `b` and `c`. With no room left, `put(d)` parked the producer. As soon as the consumer took `b`, a slot opened and `d` went in.
 
+## Try the what-if switch
+
+**unbounded**: with `new LinkedBlockingQueue<>()`, `put()` never waits. The producer finishes at once and the jobs pile up in the queue. Nothing slows the producer down, so with a fast producer the queue grows until memory runs out.
+
 ## The queue is the contract
 
 Neither side knows about the other. They only share the queue:

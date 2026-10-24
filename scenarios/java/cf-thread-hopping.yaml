@@ -1,7 +1,9 @@
 id: cf-thread-hopping
 lang: java
 group: CompletableFuture
-order: 6
+variantOf: cf-pipeline
+order: 2
+variant: "thenApply vs thenApplyAsync"
 title: Which thread runs the callback?
 summary: thenApply vs thenApplyAsync. The same callback can run on three different threads, depending on how and when you attach it.
 duration: 8

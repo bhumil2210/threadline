@@ -1,0 +1,28 @@
+## What just happened
+
+`ArrayList.add()` is several steps: read `size`, write the element into slot `size`, then store `size + 1`. Both threads read size 0 before either had stored the new size. Both wrote slot 0, and both set size to 1. Two adds, one element. With a resize happening at the same moment, `add()` can even throw `ArrayIndexOutOfBoundsException`.
+
+## Try the what-if switch
+
+- **synchronizedList**: every method runs inside `synchronized` on the list. T2 waited `BLOCKED` while T1 was inside `add()`. Correct, but all threads queue for one lock.
+- **ConcurrentHashMap**: locking is per key (per bin). Counting different words never waits, and only updates to the same key take turns. `merge()` does read-update-write as one atomic step.
+
+## Which to use
+
+| Need | Use |
+| --- | --- |
+| Shared map | `ConcurrentHashMap` |
+| List read often, changed rarely | `CopyOnWriteArrayList` |
+| Hand work between threads | `BlockingQueue` |
+| Quick fix for old code | `Collections.synchronizedList` / `synchronizedMap` |
+
+## Watch out
+
+A thread-safe collection makes each *call* safe, not your sequence of calls:
+
+```java
+counts.put(w, counts.get(w) + 1);  // two calls: still loses updates
+counts.merge(w, 1, Integer::sum);  // one atomic call
+```
+
+Use the atomic methods: `merge`, `compute`, `putIfAbsent`, `computeIfAbsent`.

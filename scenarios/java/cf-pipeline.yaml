@@ -1,8 +1,9 @@
 id: cf-pipeline
 lang: java
 group: CompletableFuture
-order: 5
-title: A CompletableFuture pipeline
+order: 10
+variant: "a pipeline"
+title: Which thread runs each step?
 summary: supplyAsync → thenApply → thenAccept. Each step starts when the one before it finishes, and gets its result.
 duration: 7
 lanes: [main, worker-1]

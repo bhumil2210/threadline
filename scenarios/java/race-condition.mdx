@@ -6,19 +6,19 @@
 
 The bad interleaving needs both threads to land in the same tiny window. On a quiet laptop that rarely happens, so tests pass. Under real load, with more threads and more cores, it happens all the time.
 
-Each thread can also keep its own cached copy of `count`. Without synchronization, Java doesn't promise that one thread ever sees another's write.
+## Try the what-if switch
 
-## How to fix it
+Both fixes make read-add-write behave as one step, in different ways:
 
-Make the read-add-write a single step that no other thread can break into:
+- **synchronized**: only one thread can be inside `increment()`. T2 sat `BLOCKED` until T1 released the lock (the *monitor*), then read the fresh value.
+- **AtomicInteger**: no lock. `compareAndSet` writes only if the value is still what you read. T2's CAS failed because T1 got there first, so T2 read again and retried. Nobody waited.
 
-```java
-synchronized (lock) { count++; }    // one thread at a time
-atomicCount.incrementAndGet();       // one atomic step, no lock
-```
-
-The next scenario compares both fixes.
+| | synchronized | Atomic (CAS) |
+| --- | --- | --- |
+| Under contention | threads wait | threads retry |
+| Protects | any block of code | one variable |
+| Good for | several fields that change together | counters, flags, single values |
 
 ## Rule of thumb
 
-If two threads touch the same variable and at least one of them writes, you need synchronization. `volatile` isn't enough here: it makes the write visible, but read-add-write is still three steps.
+If two threads touch the same variable and at least one of them writes, you need synchronization. For a counter, `incrementAndGet()` does the CAS loop for you. Once two values must change together, like a balance and a log, use a lock: two separate atomics can't keep them consistent.

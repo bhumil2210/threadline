@@ -1,7 +1,8 @@
 id: cf-exceptions
 lang: java
 group: CompletableFuture
-order: 9
+order: 12
+variant: "exceptionally / handle"
 title: When a step throws
 summary: An exception skips the next steps until something handles it. exceptionally runs only on failure; handle always runs.
 duration: 7

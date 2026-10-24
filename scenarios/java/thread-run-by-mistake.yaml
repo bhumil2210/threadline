@@ -1,0 +1,31 @@
+id: thread-run-by-mistake
+lang: java
+group: Basics
+variantOf: starting-a-thread
+order: 2
+variant: "run() by mistake"
+title: Calling run() instead of start()
+summary: run() is a plain method call. download() runs on main, and main waits for it. worker never starts.
+duration: 8
+lanes: [main, worker]
+code: |
+  Thread worker = new Thread(() -> download(), "worker");
+  worker.run();                       // a plain method call: runs here, on main
+  System.out.println("main goes on"); // only after download() returns
+  System.out.println(worker.getState()); // NEW: worker never started
+events:
+  - { id: m1, lane: main, start: 0, end: 1, type: run, label: "new Thread(…)", short: "new", line: 1 }
+  - { id: m2, lane: main, start: 1, end: 6, type: io, label: "download() on main", short: "download()", line: 2 }
+  - { id: m3, lane: main, start: 6, end: 7, type: run, label: "println", line: 3 }
+  - { id: m4, lane: main, start: 7, end: 8, type: run, label: "getState() → NEW", short: "NEW", line: 4 }
+  - { id: w1, lane: worker, start: 1, end: 8, type: skip, label: "never started", line: 2, threadState: NEW, note: "No thread was ever created for worker." }
+markers:
+  - { at: 0, text: "Same Thread object as before. It is NEW.", line: 1 }
+  - { at: 1, text: "run() is just the method that holds your code. Calling it runs download() right here, on main.", line: 2 }
+  - { at: 6, text: "Only after download() returns does main go on. Nothing ran in parallel.", line: 3 }
+  - { at: 7, text: "worker is still NEW: no new thread was ever made.", line: 4 }
+state:
+  - { at: 0, key: worker, value: "NEW" }
+  - { at: 0, key: threads running, value: "main" }
+takeaway: Always call start(). run() runs the code on the calling thread, so nothing happens in parallel.
+gotcha: Nothing warns you. The output is right, just slower, so this mistake can hide for a long time.

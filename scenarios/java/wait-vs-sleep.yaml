@@ -1,0 +1,42 @@
+id: wait-vs-sleep
+lang: java
+group: Basics
+order: 3
+variant: "sleep() keeps the lock"
+title: wait() vs sleep()
+summary: napper sleeps inside synchronized. It stops running but keeps the lock, so other is BLOCKED the whole time.
+duration: 7
+lanes: [napper, other]
+code: |
+  static final Object lock = new Object();
+
+  static void napper() throws InterruptedException {
+      synchronized (lock) {
+          Thread.sleep(1_000); // sleeps, still holding the lock
+      }
+  }
+
+  static void other() {
+      synchronized (lock) { // BLOCKED until napper leaves
+          System.out.println("other got the lock");
+      }
+  }
+events:
+  - { id: n1, lane: napper, start: 0, end: 1, type: lock, label: "enter synchronized", short: "enter", line: 4 }
+  - { id: n2, lane: napper, start: 1, end: 5, type: lock, label: "sleep(1_000), holding lock", short: "sleep", line: 5, threadState: TIMED_WAITING, note: "It is asleep, not running, but it still owns the lock." }
+  - { id: o1, lane: other, start: 2, end: 5, type: blocked, label: "BLOCKED on lock", short: "BLOCKED", line: 10 }
+  - { id: o2, lane: other, start: 5, end: 6, type: lock, label: "println", line: 11 }
+deps:
+  - [n2, o2]
+markers:
+  - { at: 0, text: "napper takes the lock first.", line: 4 }
+  - { at: 1, text: "napper calls sleep(). It stops running but keeps holding the lock.", line: 5 }
+  - { at: 2, text: "other wants the same lock. It is BLOCKED and can do nothing.", line: 10 }
+  - { at: 5, text: "napper wakes up and leaves the block, which releases the lock. Only now can other get in.", line: 6 }
+  - { at: 6, text: "other is done. It sat through napper's whole nap.", line: 11 }
+state:
+  - { at: 0, key: lock owner, value: "napper" }
+  - { at: 5, key: lock owner, value: "other" }
+  - { at: 6, key: lock owner, value: "nobody" }
+takeaway: sleep() pauses the thread but keeps every lock it holds. Don't sleep inside synchronized.
+gotcha: sleep() is a static method. other.sleep(1000) still puts the calling thread to sleep, not other.

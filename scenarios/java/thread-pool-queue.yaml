@@ -1,8 +1,9 @@
 id: thread-pool-queue
 lang: java
 group: Executors
-order: 3
-title: A pool of 2 threads, 4 tasks
+order: 8
+variant: "2 threads"
+title: How a thread pool runs tasks
 summary: A fixed pool runs as many tasks as it has threads. The rest wait in a queue for the next free thread.
 duration: 8
 lanes: [main, pool-1-thread-1, pool-1-thread-2]

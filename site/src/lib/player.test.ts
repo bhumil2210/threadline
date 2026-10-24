@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  THREAD_STATES,
   activeEvents,
+  formatStepHash,
   highlightedLines,
   markerCrossed,
   nextStepTime,
+  parseStepHash,
   prevStepTime,
   stateAt,
   stepIndexAt,
@@ -81,5 +84,28 @@ describe('time-derived views', () => {
 
   it('highlights running event lines and the step line', () => {
     expect([...highlightedLines(timeline, 2.5)].sort()).toEqual([3, 4]);
+  });
+});
+
+describe('step links', () => {
+  it('round-trips main and variant step hashes', () => {
+    expect(formatStepHash(null, 3)).toBe('#step-3');
+    expect(formatStepHash('deadlock-fixed', 2)).toBe('#deadlock-fixed/step-2');
+    expect(parseStepHash('#step-3')).toEqual({ variantId: null, step: 3 });
+    expect(parseStepHash('#deadlock-fixed/step-2')).toEqual({ variantId: 'deadlock-fixed', step: 2 });
+  });
+
+  it('ignores other anchors', () => {
+    expect(parseStepHash('#explanation')).toBeNull();
+    expect(parseStepHash('')).toBeNull();
+  });
+});
+
+describe('thread states', () => {
+  it('maps every block type to what Java reports', () => {
+    expect(THREAD_STATES.blocked.javaState).toBe('BLOCKED');
+    expect(THREAD_STATES.wait.javaState).toBe('WAITING');
+    expect(THREAD_STATES.io.javaState).toBe('RUNNABLE');
+    expect(THREAD_STATES.skip.javaState).toBeNull();
   });
 });

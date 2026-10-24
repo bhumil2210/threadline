@@ -4,6 +4,10 @@ Shop A threw an exception, so the future held an error instead of a value. `then
 
 Shop B worked, and `handle` ran with `(12, null)`.
 
+## Try the what-if switch
+
+**nobody handles it**: the same failure with no `join()`, `get()` or handler at the end. The future quietly holds the exception, `thenAccept` is skipped, and nothing is printed: no stack trace, no log line.
+
 ## The three tools
 
 | | runs on success | runs on failure | can change the result |
@@ -19,4 +23,4 @@ An exception jumps over every following step until it reaches one that handles i
 ## Watch out
 
 - The `ex` you receive is usually a `CompletionException` wrapping the real error. Check `ex.getCause()`.
-- An exception nobody handles doesn't print anything. It sits inside the future until someone calls `join()` or `get()`, and if nobody does, it's silently lost.
+- End every chain with something that reads the result or the error: `join()`, `exceptionally`, `handle` or `whenComplete`.

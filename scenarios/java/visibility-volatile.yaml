@@ -1,0 +1,51 @@
+id: visibility-volatile
+lang: java
+group: Shared state
+variantOf: visibility
+order: 2
+variant: "volatile"
+title: Fix it with volatile
+summary: volatile makes every read go to memory, so worker sees stop = true on its next lap and exits.
+duration: 7
+lanes: [main, worker]
+code: |
+  static volatile boolean stop = false; // every read sees the latest write
+
+  public static void main(String[] args) throws Exception {
+      Thread worker = new Thread(() -> {
+          long spins = 0;
+          while (!stop) { // reads stop from memory on every loop
+              spins++;
+          }
+          System.out.println("worker stopped after " + spins + " spins");
+      }, "worker");
+      worker.start();
+      Thread.sleep(1_000);
+      stop = true; // main writes the flag
+      System.out.println("main set stop = true");
+      worker.join(); // returns soon after
+  }
+events:
+  - { id: m1, lane: main, start: 0, end: 1, type: run, label: "start()", line: 11 }
+  - { id: m2, lane: main, start: 1, end: 3, type: wait, label: "sleep(1_000)", line: 12, threadState: TIMED_WAITING }
+  - { id: m3, lane: main, start: 3, end: 4, type: run, label: "stop = true", line: 13 }
+  - { id: m4, lane: main, start: 4, end: 6, type: wait, label: "join()", line: 15 }
+  - { id: m5, lane: main, start: 6, end: 7, type: run, label: "continues", line: 15 }
+  - { id: w1, lane: worker, start: 1, end: 4, type: run, label: "loop, reads stop each lap", short: "loop", line: 6 }
+  - { id: w2, lane: worker, start: 4, end: 5, type: run, label: "sees true", short: "true", line: 6 }
+  - { id: w3, lane: worker, start: 5, end: 6, type: run, label: "println", line: 9 }
+deps:
+  - [m3, w2]
+  - [w3, m5]
+markers:
+  - { at: 1, text: "Same loop, but stop is volatile. The JIT must read it from memory every lap.", line: 1 }
+  - { at: 3, text: "main writes stop = true.", line: 13 }
+  - { at: 4, text: "worker's next read sees true, so the loop ends.", line: 6 }
+  - { at: 6, text: "worker exits and join() returns.", line: 15 }
+state:
+  - { at: 0, key: stop (in memory), value: "false" }
+  - { at: 4, key: stop (in memory), value: "true" }
+  - { at: 1, key: stop (worker sees), value: "false" }
+  - { at: 4, key: stop (worker sees), value: "true" }
+takeaway: volatile makes each write visible to every later read, on any thread. It's the right tool for a simple stop flag.
+gotcha: volatile doesn't make count++ atomic. It fixes visibility, not read-add-write races. For those, use synchronized or AtomicInteger.

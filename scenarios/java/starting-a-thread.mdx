@@ -1,0 +1,21 @@
+## What just happened
+
+`new Thread(...)` only built an object. `start()` asked the operating system for a real thread, and that thread ran `download()` while main kept going. main finished first, but the program didn't end: the JVM waited for worker.
+
+## Try the what-if switch
+
+- **run() by mistake**: `run()` is just the method that holds your code. Calling it runs `download()` on main, like any other method. Nothing runs in parallel and worker stays `NEW`.
+- **daemon thread**: the JVM doesn't wait for daemon threads. When main ends, worker is stopped mid-download, and its `finally` blocks never run.
+
+## The rule
+
+| Call | Runs on | main waits? |
+| --- | --- | --- |
+| `start()` | the new thread | no |
+| `run()` | the caller | yes, it's a plain call |
+
+The JVM exits when the last **non-daemon** thread ends. Daemons are for background helpers whose work can be thrown away, like a cache cleaner.
+
+## In real code
+
+You rarely create threads by hand. An `ExecutorService` reuses a few threads for many tasks, and the next scenarios use one. But every executor does exactly this underneath: it calls `start()` once per thread, then feeds it tasks.

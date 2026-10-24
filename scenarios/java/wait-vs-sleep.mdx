@@ -1,0 +1,28 @@
+## What just happened
+
+napper went to sleep inside `synchronized`. A sleeping thread stops running, but it keeps every lock it holds. other needed the same lock, so it sat `BLOCKED` for napper's entire nap.
+
+## Try the what-if switch
+
+**wait() releases it**: `lock.wait()` gives up the lock and parks the thread until another thread calls `notify()` or `notifyAll()`. notifier got in at once. When waiter woke up, it had to take the lock back first, so it was briefly `BLOCKED` until notifier left.
+
+## The difference
+
+| | `Thread.sleep(ms)` | `lock.wait()` |
+| --- | --- | --- |
+| Holds the lock? | yes | no, gives it up |
+| Wakes up when | time runs out | notified (or timeout) |
+| Where | anywhere | only inside `synchronized (lock)` |
+| Belongs to | `Thread` (static) | `Object` |
+
+## When to use which
+
+Use `sleep()` to pause, never while holding a lock. Use `wait()` to wait for a condition another thread will make true, always in a loop:
+
+```java
+while (!ready) lock.wait();
+```
+
+## In modern code
+
+`wait`/`notify` is low level and easy to get wrong. A `BlockingQueue`, `CountDownLatch` or `CompletableFuture` usually says what you mean more clearly. The Coordination scenarios show those.

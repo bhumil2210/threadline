@@ -2,6 +2,10 @@
 
 The semaphore started with 2 permits. worker-1 and worker-2 took them. worker-3 and worker-4 parked in `acquire()`. Each time a worker finished and called `release()`, one waiting worker woke up and took that permit. There were never more than 2 workers inside `callApi`.
 
+## Try the what-if switch
+
+**1 permit**: one worker at a time, so the semaphore acts like a lock and the four calls take 12 units instead of 6. Unlike a lock, a permit has no owner: any thread may release it.
+
 ## When to use it
 
 To cap how many threads do something at the same time:

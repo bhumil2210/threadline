@@ -1,0 +1,46 @@
+id: common-pool
+lang: java
+group: Advanced
+order: 16
+variant: "default: the common pool"
+title: When parallelStream starves the common pool
+summary: A parallel stream of blocking calls fills the common pool. An unrelated quick task waits in line behind it.
+duration: 9
+lanes: [main, commonPool-1, commonPool-2, http-1]
+code: |
+  // A batch job on main:
+  List.of(1, 2, 3, 4, 5, 6).parallelStream()
+      .forEach(id -> buildReport(id)); // slow and blocking: holds a common-pool thread
+
+  // Meanwhile, a request handler on http-1:
+  String r = CompletableFuture.supplyAsync(() -> quickTask()) // no executor: the common pool
+      .join(); // waits for a free common-pool thread
+events:
+  - { id: r4, lane: main, start: 0, end: 3, type: io, label: "buildReport(4)", short: "report 4", line: 3, note: "The thread that runs the stream does part of the work itself." }
+  - { id: r1, lane: main, start: 3, end: 6, type: io, label: "buildReport(1)", short: "report 1", line: 3 }
+  - { id: mw, lane: main, start: 6, end: 7, type: wait, label: "waits for the stream", short: "wait", line: 2 }
+  - { id: md, lane: main, start: 7, end: 8, type: run, label: "stream done", short: "done", line: 2 }
+  - { id: r2, lane: commonPool-1, start: 0, end: 3, type: io, label: "buildReport(2)", short: "report 2", line: 3, note: "Real name: ForkJoinPool.commonPool-worker-1." }
+  - { id: r3, lane: commonPool-1, start: 3, end: 7, type: io, label: "buildReport(3)", short: "report 3", line: 3 }
+  - { id: r6, lane: commonPool-2, start: 0, end: 3, type: io, label: "buildReport(6)", short: "report 6", line: 3, note: "Real name: ForkJoinPool.commonPool-worker-2." }
+  - { id: r5, lane: commonPool-2, start: 3, end: 6, type: io, label: "buildReport(5)", short: "report 5", line: 3 }
+  - { id: q, lane: commonPool-2, start: 6, end: 7, type: run, label: "quickTask()", short: "quick", line: 6 }
+  - { id: h1, lane: http-1, start: 1, end: 2, type: run, label: "supplyAsync", short: "submit", line: 6 }
+  - { id: h2, lane: http-1, start: 2, end: 7, type: wait, label: "join(): queued", short: "join()", line: 7 }
+  - { id: h3, lane: http-1, start: 7, end: 8, type: run, label: "got ok", short: "ok", line: 7 }
+deps:
+  - [q, h3]
+  - [r3, md]
+markers:
+  - { at: 0, text: "parallelStream splits the work over the common pool: 2 workers here, plus main itself.", line: 2 }
+  - { at: 1, text: "A request on http-1 calls supplyAsync with no executor. That's the same common pool.", line: 6 }
+  - { at: 2, text: "Every common-pool thread is stuck in a blocking report. quickTask waits in the queue.", line: 7 }
+  - { at: 6, text: "commonPool-2 runs out of report work and finally picks up quickTask. A 1-unit task waited 5.", line: 6 }
+  - { at: 7, text: "http-1 gets its answer, and the stream finishes.", line: 7 }
+state:
+  - { at: 0, key: free pool threads, value: "0 of 2" }
+  - { at: 1, key: queued, value: "quickTask" }
+  - { at: 6, key: queued, value: "none" }
+  - { at: 7, key: free pool threads, value: "2 of 2" }
+takeaway: parallelStream and CompletableFuture's default async methods share one JVM-wide pool, sized for CPU work. Blocking calls there slow down unrelated code.
+gotcha: The common pool has one thread fewer than you have CPU cores. In a 2-core container that's a single thread for the whole JVM.

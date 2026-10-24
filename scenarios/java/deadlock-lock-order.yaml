@@ -1,0 +1,52 @@
+id: deadlock-lock-order
+lang: java
+group: Shared state
+variantOf: deadlock
+order: 2
+variant: "same lock order"
+title: Fix it with a lock order
+summary: Both threads take A first, then B. The second thread waits on A holding nothing, so it can't block anyone.
+duration: 9
+lanes: [T1, T2]
+code: |
+  static final Object A = new Object();
+  static final Object B = new Object();
+
+  static void lockAThenB(String who) {
+      synchronized (A) { // the second thread waits here, holding nothing
+          pause();
+          synchronized (B) {
+              System.out.println(who + " done");
+          }
+      }
+  }
+
+  Thread t1 = new Thread(() -> lockAThenB("T1"), "T1");
+  Thread t2 = new Thread(() -> lockAThenB("T2"), "T2"); // same order as T1
+events:
+  - { id: a1, lane: T1, start: 0, end: 1, type: lock, label: "lock A", line: 5 }
+  - { id: p1, lane: T1, start: 1, end: 2, type: lock, label: "pause()", line: 6 }
+  - { id: b1, lane: T1, start: 2, end: 3, type: lock, label: "lock B", line: 7 }
+  - { id: d1, lane: T1, start: 3, end: 4, type: lock, label: "println", line: 8 }
+  - { id: w2, lane: T2, start: 0, end: 4, type: blocked, label: "BLOCKED: wants A", short: "wants A", line: 5, note: "T2 holds no lock yet, so it can't be in anyone's way." }
+  - { id: a2, lane: T2, start: 4, end: 5, type: lock, label: "lock A", line: 5 }
+  - { id: p2, lane: T2, start: 5, end: 6, type: lock, label: "pause()", line: 6 }
+  - { id: b2, lane: T2, start: 6, end: 7, type: lock, label: "lock B", line: 7 }
+  - { id: d2, lane: T2, start: 7, end: 8, type: lock, label: "println", line: 8 }
+deps:
+  - [d1, a2]
+markers:
+  - { at: 0, text: "Both threads take A first. T1 gets it; T2 is BLOCKED, holding nothing.", line: 5 }
+  - { at: 2, text: "T1 takes B as well. No one can be holding B without holding A first.", line: 7 }
+  - { at: 4, text: "T1 is done and releases both locks. T2 gets A.", line: 5 }
+  - { at: 6, text: "T2 takes B and finishes. Same work, no deadlock.", line: 7 }
+state:
+  - { at: 0, key: A held by, value: "T1" }
+  - { at: 2, key: B held by, value: "T1" }
+  - { at: 4, key: A held by, value: "T2" }
+  - { at: 4, key: B held by, value: "nobody" }
+  - { at: 6, key: B held by, value: "T2" }
+  - { at: 8, key: A held by, value: "nobody" }
+  - { at: 8, key: B held by, value: "nobody" }
+takeaway: Take locks in one fixed order everywhere. Then no thread can hold the second lock while waiting for the first.
+gotcha: With one lock per bank account, transfer(a, b) and transfer(b, a) lock in opposite orders. Lock the account with the smaller id first, or use ReentrantLock.tryLock with a timeout.

@@ -1,0 +1,22 @@
+## What just happened
+
+main set `stop = true`, but worker kept spinning. The loop was hot, so the JIT compiled it, and because `stop` is a plain field, the compiled code was allowed to read it once and reuse the value. worker never looked again, and `join()` never returned.
+
+## Try the what-if switch
+
+**volatile**: a `volatile` field must be read from memory every time, and every write to it is visible to later reads on any thread. worker saw `true` on its next lap and exited.
+
+## Why Java allows this
+
+Without `volatile` or a lock, the Java Memory Model doesn't promise that one thread ever sees another's write. That freedom lets the JIT and CPU keep values in registers and caches, which is what makes ordinary code fast. You opt in to cross-thread visibility where you need it.
+
+Things that make a write visible:
+
+- `volatile` fields
+- `synchronized` blocks on the same lock (unlocking publishes, locking reads fresh)
+- `Thread.start()` and `join()`
+- `java.util.concurrent` classes like `AtomicBoolean` and `BlockingQueue`
+
+## Watch out
+
+`volatile` fixes visibility, not atomicity. `count++` on a volatile field is still read-add-write, so it still loses updates. Use it for flags written by one thread and read by others.

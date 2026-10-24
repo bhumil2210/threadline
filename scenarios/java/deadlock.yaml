@@ -1,0 +1,52 @@
+id: deadlock
+lang: java
+group: Shared state
+order: 6
+variant: "opposite lock order"
+title: Deadlock
+summary: T1 holds A and wants B. T2 holds B and wants A. Each waits for the other, forever.
+duration: 8
+lanes: [T1, T2]
+code: |
+  static final Object A = new Object();
+  static final Object B = new Object();
+
+  static void lockAThenB() {
+      synchronized (A) {
+          pause(); // meanwhile T2 takes B
+          synchronized (B) { // BLOCKED: T2 holds B
+              System.out.println("T1 done");
+          }
+      }
+  }
+
+  static void lockBThenA() {
+      synchronized (B) {
+          pause();
+          synchronized (A) { // BLOCKED: T1 holds A
+              System.out.println("T2 done");
+          }
+      }
+  }
+
+  new Thread(Main::lockAThenB, "T1").start();
+  new Thread(Main::lockBThenA, "T2").start(); // both wait forever
+events:
+  - { id: a1, lane: T1, start: 0, end: 1, type: lock, label: "lock A", line: 5 }
+  - { id: p1, lane: T1, start: 1, end: 2, type: lock, label: "pause()", line: 6 }
+  - { id: b1, lane: T1, start: 2, end: 8, type: blocked, label: "BLOCKED: wants B", short: "wants B", line: 7 }
+  - { id: a2, lane: T2, start: 0, end: 1, type: lock, label: "lock B", line: 14 }
+  - { id: p2, lane: T2, start: 1, end: 3, type: lock, label: "pause()", line: 15 }
+  - { id: b2, lane: T2, start: 3, end: 8, type: blocked, label: "BLOCKED: wants A", short: "wants A", line: 16 }
+markers:
+  - { at: 0, text: "T1 takes lock A. At the same time, T2 takes lock B.", line: 5 }
+  - { at: 2, text: "T1 now needs B, but T2 has it. T1 is BLOCKED, still holding A.", line: 7 }
+  - { at: 3, text: "T2 needs A, but T1 has it. T2 is BLOCKED too, still holding B.", line: 16 }
+  - { at: 4, text: "Each waits for the other forever. No exception, no CPU use: the program just stops.", line: 23 }
+state:
+  - { at: 0, key: A held by, value: "T1" }
+  - { at: 0, key: B held by, value: "T2" }
+  - { at: 2, key: T1 waits for, value: "B" }
+  - { at: 3, key: T2 waits for, value: "A" }
+takeaway: A deadlock needs threads taking the same locks in opposite orders. Each holds one lock and waits for the other's.
+gotcha: A thread dump (jstack <pid>, or your IDE's) reports "Found one Java-level deadlock" with both threads and locks. The JVM can find a deadlock, but it won't break it.

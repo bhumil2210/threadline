@@ -58,10 +58,62 @@ export function stateAt(state: readonly StateEntry[], t: number): StateValue[] {
 }
 
 /** Code lines to highlight at t: lines of running events plus the current marker's line. */
-export function highlightedLines(timeline: Timeline, t: number): Set<number> {
+export function highlightedLines(timeline: Pick<Timeline, 'events' | 'markers'>, t: number): Set<number> {
   const lines = new Set<number>();
   for (const e of activeEvents(timeline.events, t)) if (e.line) lines.add(e.line);
   const step = timeline.markers[stepIndexAt(timeline.markers, t)];
   if (step?.line) lines.add(step.line);
   return lines;
+}
+
+export interface ThreadStateInfo {
+  /** What java.lang.Thread.getState() reports, or null when the step never ran. */
+  javaState: string | null;
+  meaning: string;
+}
+
+/** What each block type means for the thread, in Java's own terms. */
+export const THREAD_STATES: Record<TimelineEvent['type'], ThreadStateInfo> = {
+  run: { javaState: 'RUNNABLE', meaning: 'Running on a CPU.' },
+  io: {
+    javaState: 'RUNNABLE',
+    meaning:
+      'Waiting on I/O, like a network call. For blocking socket I/O Java still reports RUNNABLE: the thread is stuck in the operating system, not in Java.',
+  },
+  blocked: {
+    javaState: 'BLOCKED',
+    meaning: 'Waiting to enter a synchronized block that another thread holds. It does nothing until the lock is released.',
+  },
+  wait: {
+    javaState: 'WAITING',
+    meaning:
+      'Parked until something wakes it: join(), get(), await(), take(), acquire(). Uses no CPU. With a timeout it is TIMED_WAITING.',
+  },
+  lock: { javaState: 'RUNNABLE', meaning: 'Holding a lock. Any other thread that needs it will block until it is released.' },
+  error: { javaState: 'RUNNABLE', meaning: 'Running code that throws an exception.' },
+  fail: { javaState: 'RUNNABLE', meaning: 'Ran, but the operation failed (for example a CAS that lost the race).' },
+  skip: { javaState: null, meaning: 'Skipped: this step never ran.' },
+};
+
+/** Step links: `#step-3` for the main timeline, `#<variant id>/step-3` for a variant. */
+export function formatStepHash(variantId: string | null, step: number): string {
+  return variantId ? `#${variantId}/step-${step}` : `#step-${step}`;
+}
+
+export function parseStepHash(hash: string): { variantId: string | null; step: number } | null {
+  const m = /^#(?:([a-z0-9-]+)\/)?step-(\d+)$/.exec(hash);
+  return m ? { variantId: m[1] ?? null, step: Number(m[2]) } : null;
+}
+
+/**
+ * The code panel's markup: one span per line, so the player highlights a line by toggling a class.
+ * `classes` gives the extra classes of line n (1-based), used to render the first frame at build time.
+ */
+export function linesHtml(lines: readonly string[], classes: (n: number) => string = () => ''): string {
+  return lines
+    .map((html, i) => {
+      const extra = classes(i + 1);
+      return `<span class="line${extra ? ` ${extra}` : ''}"><span class="ln">${i + 1}</span>${html || ' '}</span>`;
+    })
+    .join('');
 }

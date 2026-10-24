@@ -1,24 +1,38 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, type Snippet } from 'svelte';
   import TimelineView, { labelWidth } from './Timeline.svelte';
   import {
     EPS,
+    THREAD_STATES,
     activeEvents,
+    formatStepHash,
     highlightedLines,
+    linesHtml,
     markerCrossed,
     nextStepTime,
+    parseStepHash,
     prevStepTime,
     stateAt,
     stepIndexAt,
   } from '../lib/player';
-  import type { EventType, Timeline } from '../lib/timeline';
+  import type { PlayerVariant } from '../lib/catalog';
+  import type { EventType, PlayerTimeline } from '../lib/timeline';
 
   interface Props {
-    timeline: Timeline;
-    codeLines: string[];
+    /** The main timeline, embedded in the page. */
+    first: PlayerTimeline;
+    /**
+     * The main timeline's code lines (see linesHtml), passed as static HTML rather than as props,
+     * so the page carries them once instead of twice.
+     */
+    children?: Snippet;
+    /** The what-if switch, main first. One entry means no switch. */
+    options: { id: string; label: string }[];
+    /** Every timeline, main first. Fetched when idle, so the page itself stays small. */
+    variantsUrl: string;
   }
 
-  let { timeline, codeLines }: Props = $props();
+  let { first, children, options, variantsUrl }: Props = $props();
 
   /** Wall-clock milliseconds per abstract time unit at 1x. */
   const UNIT_MS = 700;
@@ -33,16 +47,23 @@
     fail: 'Failed',
     skip: 'Skipped',
   };
-
-  const markers = timeline.markers;
-  const duration = timeline.duration;
   const PAD_R = 18;
+
+  let vi = $state(0);
+  let loaded = $state<PlayerVariant[] | null>(null);
+  let loading: Promise<PlayerVariant[]> | null = null;
+  /** The variant shown, or null for the main timeline, whose code is the static children. */
+  const current = $derived(vi > 0 && loaded ? loaded[vi]! : null);
+  const timeline = $derived(current?.timeline ?? first);
+  const markers = $derived(timeline.markers);
+  const duration = $derived(timeline.duration);
 
   let t = $state(0);
   let playing = $state(false);
   let speed = $state<(typeof SPEEDS)[number]>(1);
   let pauseAtSteps = $state(true);
   let tab = $state<'code' | 'idea' | 'gotcha'>('code');
+  let selectedId = $state<string | null>(null);
 
   // Derived views keyed by primitives, so the DOM only updates when the value really changes,
   // not on every animation frame.
@@ -54,7 +75,8 @@
   const hlLines = $derived(new Set(hlKey ? hlKey.split(' ').map(Number) : []));
   const stateKey = $derived(JSON.stringify(stateAt(timeline.state, t)));
   const stateRows = $derived(JSON.parse(stateKey) as ReturnType<typeof stateAt>);
-  const usedTypes = [...new Set(timeline.events.map((e) => e.type))];
+  const usedTypes = $derived([...new Set(timeline.events.map((e) => e.type))]);
+  const selected = $derived(timeline.events.find((e) => e.id === selectedId) ?? null);
 
   let raf = 0;
   let last = 0;
@@ -119,10 +141,37 @@
     t = prevStepTime(markers, t);
   };
 
+  function loadVariants(): Promise<PlayerVariant[]> {
+    loading ??= fetch(variantsUrl)
+      .then((r) => {
+        if (!r.ok) throw new Error(`${variantsUrl}: ${r.status}`);
+        return r.json() as Promise<PlayerVariant[]>;
+      })
+      .then((v) => (loaded = v));
+    loading.catch(() => (loading = null)); // allow a retry on the next click
+    return loading;
+  }
+
+  const prefetch = () => void loadVariants().catch(() => {});
+
+  /** Switch what-if variant, keeping the same moment in time so the two can be compared. */
+  async function switchVariant(i: number) {
+    if (i === vi) return;
+    const all = i > 0 ? await loadVariants() : null;
+    stop();
+    selectedId = null;
+    vi = i;
+    t = Math.min(t, (all ? all[i]!.timeline : first).duration);
+  }
+
+  const select = (id: string | null) => (selectedId = id === selectedId ? null : id);
+
   function onKey(e: KeyboardEvent) {
     const el = e.target as HTMLElement;
     if (el.closest('input, textarea, select, [contenteditable]')) return;
-    if (e.key === ' ' && !el.closest('button')) {
+    if (e.key === 'Escape' && selectedId) {
+      selectedId = null;
+    } else if (e.key === ' ' && !el.closest('button, [role="button"]')) {
       e.preventDefault();
       toggle();
     } else if (e.key === 'ArrowRight') {
@@ -142,21 +191,49 @@
     else if (cx < scrollLeft + LABEL_W) scroller.scrollLeft = Math.max(0, cx - LABEL_W - 24);
   });
 
-  // Deep link to the current step, updated only when the step changes.
+  // Highlight code lines by toggling classes, so the static first-variant code needs no re-render.
+  // Runs after the DOM update, so it also styles a variant's lines right after they are swapped in.
+  let codeEl: HTMLElement | undefined = $state();
+  $effect(() => {
+    void current;
+    const stepLine = step.line;
+    const selLine = selected?.line;
+    codeEl?.querySelectorAll('.line').forEach((el, i) => {
+      el.classList.toggle('step-line', stepLine === i + 1);
+      el.classList.toggle('hl', hlLines.has(i + 1));
+      el.classList.toggle('sel-line', selLine === i + 1);
+    });
+  });
+
+  // Deep link to the current variant and step, updated only when they change.
   $effect(() => {
     if (!ready) return;
-    const hash = `#step-${stepIdx + 1}`;
+    const hash = formatStepHash(vi === 0 ? null : timeline.id, stepIdx + 1);
     // Leave other anchors (e.g. #explanation) alone; only own the URL when it's empty or a step link.
-    const ours = location.hash === '' || /^#step-\d+$/.test(location.hash);
+    const ours = location.hash === '' || parseStepHash(location.hash) !== null;
     if (ours && location.hash !== hash) history.replaceState(null, '', hash);
   });
 
   onMount(() => {
     reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const m = /^#step-(\d+)$/.exec(location.hash);
-    const target = m ? markers[Number(m[1]) - 1] : undefined;
-    if (target) t = target.at;
-    ready = true;
+    const link = parseStepHash(location.hash);
+    const i = link?.variantId ? options.findIndex((o) => o.id === link.variantId) : 0;
+    const goTo = (all: PlayerVariant[] | null) => {
+      if (link && i >= 0) {
+        vi = i;
+        const target = (all ? all[i]!.timeline : first).markers[link.step - 1];
+        if (target) t = target.at;
+      }
+      ready = true;
+    };
+    if (i > 0) {
+      loadVariants().then(goTo, () => goTo(null));
+    } else {
+      goTo(null);
+      // Fetch the other variants well after first paint, so switching is instant. Not sooner: a request
+      // that starts before the page has painted counts against load time. Pointing at the switch is sooner.
+      if (options.length > 1) setTimeout(prefetch, 3000);
+    }
     return stop;
   });
 
@@ -166,6 +243,18 @@
 <svelte:window onkeydown={onKey} />
 
 <section class="player" aria-label="Scenario player">
+  {#if options.length > 1}
+    <div class="whatif" role="group" aria-label="What if" onpointerenter={prefetch} onfocusin={prefetch}>
+      <span class="whatif-label">What if</span>
+      <div class="whatif-options">
+        {#each options as o, i (o.id)}
+          <button type="button" aria-pressed={vi === i} onclick={() => switchVariant(i)}>{o.label}</button>
+        {/each}
+      </div>
+      <p class="whatif-summary">{timeline.summary}</p>
+    </div>
+  {/if}
+
   <div class="card stage">
     <div
       class="scroller"
@@ -173,7 +262,30 @@
       bind:clientWidth={scrollerWidth}
       onscroll={(e) => (scrollLeft = e.currentTarget.scrollLeft)}
     >
-      <TimelineView {timeline} {t} {activeIds} {ppu} {compact} labelW={LABEL_W} />
+      {#key timeline.id}
+        <TimelineView {timeline} {t} {activeIds} {ppu} {compact} {selectedId} onselect={select} labelW={LABEL_W} />
+      {/key}
+    </div>
+    <div class="details" class:empty={!selected} aria-live="polite">
+      {#if selected}
+        {@const info = THREAD_STATES[selected.type]}
+        <div class="details-head">
+          <span class="swatch {selected.type}"></span>
+          <strong>{selected.lane}</strong>
+          <span class="details-label">{selected.label}</span>
+          {#if selected.threadState ?? info.javaState}<code class="jstate">{selected.threadState ?? info.javaState}</code>{/if}
+          <button type="button" class="details-close" onclick={() => (selectedId = null)} aria-label="Close details">×</button>
+        </div>
+        <p>
+          {info.meaning}
+          {#if selected.note}{' '}{selected.note}{/if}
+        </p>
+        <p class="details-meta">
+          t = {fmt(selected.start)} to {fmt(selected.end)}{#if selected.line}{' '}· line {selected.line}{/if}
+        </p>
+      {:else}
+        <p class="hint">Tap any block to see what that thread is doing.</p>
+      {/if}
     </div>
     <ul class="legend" aria-label="Legend">
       {#each usedTypes as type (type)}
@@ -247,11 +359,9 @@
 
   <div class="panels">
     <div class="card code" class:show={tab === 'code'}>
-      <pre><code>{#each codeLines as html, i (i)}<span
-            class="line"
-            class:step-line={step.line === i + 1}
-            class:hl={hlLines.has(i + 1)}><span class="ln">{i + 1}</span>{@html html || ' '}</span
-          >{/each}</code></pre>
+      <pre><code bind:this={codeEl}
+          >{#if current}{@html linesHtml(current.codeLines)}{:else}{@render children?.()}{/if}</code
+        ></pre>
     </div>
 
     <aside class="side">
@@ -294,6 +404,130 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
+  }
+
+  .whatif {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+  }
+
+  .whatif-label {
+    font: 500 12px/1 var(--font-mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .whatif-options {
+    display: flex;
+    flex-wrap: wrap;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .whatif-options button {
+    min-height: 40px;
+    padding: 0 14px;
+    background: var(--surface);
+    border: 0;
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  .whatif-options button + button {
+    border-left: 1px solid var(--border);
+  }
+
+  .whatif-options button[aria-pressed='true'] {
+    background: var(--surface-2);
+    color: var(--text);
+    box-shadow: inset 0 -2px 0 var(--accent);
+  }
+
+  .whatif-summary {
+    flex-basis: 100%;
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+
+  .details {
+    min-height: 92px; /* reserved, so selecting a block never shifts the page */
+    margin: 8px 16px 0;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+  }
+
+  .details.empty {
+    display: flex;
+    align-items: center;
+    border-style: dashed;
+  }
+
+  .details p {
+    margin: 4px 0 0;
+  }
+
+  .details .hint {
+    margin: 0;
+    color: var(--muted);
+  }
+
+  .details-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+  }
+
+  .details-head strong {
+    font: 500 13px var(--font-mono);
+  }
+
+  .details-label {
+    font: 13px var(--font-mono);
+    color: var(--muted);
+  }
+
+  .jstate {
+    padding: 1px 6px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 12px;
+    background: var(--surface-2);
+  }
+
+  .details-close {
+    margin-left: auto;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background: none;
+    border: 0;
+    border-radius: 999px;
+    font-size: 20px;
+    line-height: 1;
+    color: var(--muted);
+  }
+
+  .details-close:hover {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+
+  .details-meta {
+    font: 12px var(--font-mono);
+    color: var(--muted);
+  }
+
+  .code :global(.line.sel-line) {
+    box-shadow: inset 0 0 0 1px var(--text);
   }
 
   .stage {
@@ -571,23 +805,24 @@
     line-height: 1.7;
   }
 
-  .line {
+  /* Lines come from static or {@html} markup, which has no Svelte scope class, hence :global. */
+  .code :global(.line) {
     display: block;
     padding: 0 16px 0 0;
     border-left: 3px solid transparent;
     transition: background-color 120ms;
   }
 
-  .line.hl {
+  .code :global(.line.hl) {
     background: var(--hl-run);
   }
 
-  .line.step-line {
+  .code :global(.line.step-line) {
     background: var(--hl-step);
     border-left-color: var(--accent);
   }
 
-  .ln {
+  .code :global(.ln) {
     display: inline-block;
     width: 3.2ch;
     margin: 0 14px 0 6px;
@@ -719,7 +954,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .line,
+    .code :global(.line),
     dl div,
     .buttons button {
       transition: none;

@@ -1,8 +1,9 @@
 id: virtual-threads
 lang: java
-group: Virtual threads
-order: 13
-title: Virtual threads hop between carriers
+group: Advanced
+order: 17
+variant: "virtual threads"
+title: Virtual threads
 summary: Three virtual threads share two real (carrier) threads. When one blocks, it steps off its carrier so another can run.
 duration: 6
 lanes: [main, carrier-1, carrier-2]

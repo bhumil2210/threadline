@@ -1,19 +1,28 @@
 ## What just happened
 
-main described a three-step pipeline and then waited on `join()`. A common-pool thread ran the steps in order: `fetchUser`, then `thenApply` with the user, then `thenAccept` with the name. Each step started the moment the previous one finished.
-
-## The three steps
+main described a three-step pipeline and then waited on `join()`. A common-pool thread ran the steps in order: `fetchUser`, then `thenApply` with the user, then `thenAccept` with the name. Each step started the moment the previous one finished, with its result.
 
 - `supplyAsync(() -> ...)`: run this on another thread and produce a value.
 - `thenApply(x -> ...)`: turn the value into a new value.
 - `thenAccept(x -> ...)`: use the value, return nothing.
 
-Each call returns a **new** future for the next step, so they chain.
+No thread waits between steps. main only waits at the very end, because this program has nothing else to do.
 
-## Why it's better than Future.get()
+## Try the what-if switch
 
-With `Future`, a thread has to block on `get()` before it can do the next step. Here, no thread waits between steps: the next step runs when the value arrives. main only waits at the very end, and only because this program has nothing else to do.
+**thenApply vs thenApplyAsync**: the same `parse` callback runs on three different threads.
+
+1. **main**, for `done.thenApply(...)`: `done` was already complete when the callback was attached.
+2. **io-1**, for `f.thenApply(...)`: io-1 is the thread that completed `f`.
+3. **cpu-1**, for `f.thenApplyAsync(..., cpuPool)`: async means "submit to this executor".
+
+## The rule
+
+- **Non-async** (`thenApply`, `thenAccept`, ...): run *wherever, right now*. That's the thread that completes the future, or the caller if it's already done.
+- **Async** (`thenApplyAsync(fn, executor)`): always submit to the executor. Without one, that means the common pool.
 
 ## Watch out
 
-`supplyAsync` without an executor uses the shared `ForkJoinPool.commonPool()`. Its threads are daemons, so if main exits first, your pipeline may never finish. In a real app, pass your own executor for anything that does I/O, so slow calls don't hog the shared pool.
+You don't control where a plain `thenApply` runs. Put heavy work there and it might run on an HTTP client's I/O thread. Use `thenApplyAsync` with an executor you own for slow or blocking work.
+
+`supplyAsync` without an executor uses the shared common pool, whose threads are daemons. If main exits first, the pipeline may never finish.

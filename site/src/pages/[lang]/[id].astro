@@ -2,32 +2,44 @@
 import { getEntry, render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import Player from '../../components/Player.svelte';
-import { highlightLines } from '../../lib/highlight';
-import { LANG_NAME, allScenarios, scenarioUrl } from '../../lib/catalog';
+import { LANG_NAME, allScenarios, playerData, scenarioUrl, variantsUrl } from '../../lib/catalog';
+import { highlightedLines, linesHtml } from '../../lib/player';
 import type { Timeline } from '../../lib/timeline';
 
 export async function getStaticPaths() {
-  const scenarios = await allScenarios();
-  return scenarios.map((scenario, i) => ({
-    params: { lang: scenario.lang, id: scenario.id },
+  const all = await allScenarios();
+  const scenarios = all.map((s) => s.main);
+  return all.map(({ main, variants }, i) => ({
+    params: { lang: main.lang, id: main.id },
     props: {
-      scenario,
-      total: scenarios.filter((s) => s.lang === scenario.lang).length,
-      prev: scenarios[i - 1]?.lang === scenario.lang ? scenarios[i - 1] : undefined,
-      next: scenarios[i + 1]?.lang === scenario.lang ? scenarios[i + 1] : undefined,
+      scenario: main,
+      variants,
+      total: scenarios.filter((s) => s.lang === main.lang).length,
+      prev: scenarios[i - 1]?.lang === main.lang ? scenarios[i - 1] : undefined,
+      next: scenarios[i + 1]?.lang === main.lang ? scenarios[i + 1] : undefined,
     },
   }));
 }
 
 interface Props {
   scenario: Timeline;
+  variants: Timeline[];
   total: number;
   prev?: Timeline;
   next?: Timeline;
 }
 
-const { scenario, total, prev, next } = Astro.props;
-const code = await highlightLines(scenario.code, scenario.lang);
+const { scenario, variants, total, prev, next } = Astro.props;
+const timelines = [scenario, ...variants];
+const player = await playerData(timelines);
+// Only the main timeline goes into the page; the rest load from variants.json when needed.
+const options = timelines.map((t) => ({ id: t.id, label: t.variant ?? '' }));
+// The first frame's highlighted lines (t = 0), so the code looks the same before and after hydration.
+const step0 = scenario.markers[0]?.line;
+const hl0 = highlightedLines(scenario, 0);
+const firstCode = linesHtml(player.variants[0]!.codeLines, (n) =>
+  [n === step0 && 'step-line', hl0.has(n) && 'hl'].filter(Boolean).join(' '),
+);
 const writeup = await getEntry('writeups', `${scenario.lang}/${scenario.id}`);
 const Writeup = writeup ? (await render(writeup)).Content : undefined;
 ---
@@ -63,7 +75,8 @@ const Writeup = writeup ? (await render(writeup)).Content : undefined;
 
   <header class="intro">
     <h1>{scenario.title}</h1>
-    <p class="summary">{scenario.summary}</p>
+    {/* With variants, the player shows each case's summary under the what-if switch instead. */}
+    {variants.length === 0 && <p class="summary">{scenario.summary}</p>}
     {
       Writeup && (
         <a class="jump" href="#explanation">
@@ -73,8 +86,10 @@ const Writeup = writeup ? (await render(writeup)).Content : undefined;
     }
   </header>
 
-  <style is:inline set:html={code.css} />
-  <Player client:load timeline={scenario} codeLines={code.lines} />
+  <style is:inline set:html={player.css} />
+  <Player client:load first={player.variants[0]!.timeline} {options} variantsUrl={variantsUrl(scenario)}>
+    <Fragment set:html={firstCode} />
+  </Player>
 
   {
     Writeup && (

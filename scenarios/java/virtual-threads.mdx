@@ -2,6 +2,10 @@
 
 Three virtual threads ran on two real OS threads, called *carriers*. A virtual thread only occupies a carrier while it's actually running. When vt-1 and vt-2 called `sleep()`, they **unmounted**, and carrier-1 picked up vt-3. After the sleeps, vt-1 and vt-2 **remounted**, on swapped carriers. For a moment all three were asleep and both carriers were free.
 
+## Try the what-if switch
+
+**2 platform threads**: the same three tasks on `newFixedThreadPool(2)`. A sleeping task keeps its OS thread asleep with it, so task 3 can't start until task 1 is completely done. The work finishes at 8 instead of 5.
+
 ## Why this matters
 
 A platform thread that blocks on I/O holds an OS thread doing nothing. That's why servers needed thread pools and callbacks. A virtual thread that blocks costs almost nothing, so you can write simple blocking code and still run thousands of tasks at once.

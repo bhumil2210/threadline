@@ -1,0 +1,40 @@
+id: thread-safe-collections
+lang: java
+group: Shared state
+order: 7
+variant: "ArrayList"
+title: Thread-safe collections
+summary: Two threads add to one ArrayList. Both write into the same slot, and one element is lost.
+duration: 6
+lanes: [T1, T2]
+code: |
+  static final List<Integer> list = new ArrayList<>(); // not thread-safe
+
+  static void addMany() {
+      for (int i = 0; i < 1_000; i++) {
+          list.add(i); // read size, write slot [size], then size = size + 1
+      }
+  }
+events:
+  - { id: r1, lane: T1, start: 0, end: 1, type: run, label: "size → 0", line: 5 }
+  - { id: w1, lane: T1, start: 1, end: 2, type: run, label: "slot[0] = 0", short: "[0]=0", line: 5 }
+  - { id: s1, lane: T1, start: 2, end: 3, type: run, label: "size = 1", line: 5 }
+  - { id: r2, lane: T2, start: 1, end: 2, type: run, label: "size → 0", line: 5 }
+  - { id: w2, lane: T2, start: 2, end: 3, type: run, label: "slot[0] = 0", short: "[0]=0", line: 5, note: "Writes over T1's element in the same slot." }
+  - { id: s2, lane: T2, start: 3, end: 4, type: run, label: "size = 1", line: 5 }
+deps:
+  - [w1, w2]
+markers:
+  - { at: 0, text: "Two threads add to one ArrayList. add() reads size, writes that slot, then bumps size.", line: 5 }
+  - { at: 1, text: "T2 reads size before T1 has bumped it. Both see 0.", line: 5 }
+  - { at: 2, text: "T1 wrote slot 0. Now T2 writes slot 0 too, over it.", line: 5 }
+  - { at: 3, text: "Both set size = 1. Two adds, one element.", line: 5 }
+  - { at: 4, text: "This repeats all through the loop. You end with fewer than 2000 elements, or add() throws ArrayIndexOutOfBoundsException mid-resize.", line: 4 }
+state:
+  - { at: 0, key: size, value: "0" }
+  - { at: 3, key: size, value: "1" }
+  - { at: 4, key: size, value: "1 (should be 2)" }
+  - { at: 2, key: "slot[0]", value: "T1's 0" }
+  - { at: 3, key: "slot[0]", value: "T2's 0" }
+takeaway: ArrayList, HashMap and friends are not thread-safe. Two threads writing at once corrupt them, silently.
+gotcha: The same goes for HashMap, HashSet and StringBuilder. If a class's docs don't say it's thread-safe, assume it isn't.

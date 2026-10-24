@@ -1,7 +1,8 @@
 id: future-get-blocks
 lang: java
 group: Executors
-order: 4
+order: 9
+variant: "get() late"
 title: Future.get() makes you wait
 summary: submit() gives you a Future right away. get() trades it for the result, and blocks until the result exists.
 duration: 7

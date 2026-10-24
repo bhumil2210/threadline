@@ -1,7 +1,8 @@
 id: count-down-latch
 lang: java
 group: Coordination
-order: 10
+order: 13
+variant: "all loaders succeed"
 title: Wait for N things with CountDownLatch
 summary: main waits until three loaders have each counted down once. Then the latch opens.
 duration: 6

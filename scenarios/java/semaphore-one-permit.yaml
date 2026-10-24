@@ -1,0 +1,46 @@
+id: semaphore-one-permit
+lang: java
+group: Coordination
+variantOf: semaphore
+order: 2
+variant: "1 permit"
+title: A Semaphore with 1 permit
+summary: With one permit, the four workers call the API one at a time. The semaphore works like a lock.
+duration: 12
+lanes: [worker-1, worker-2, worker-3, worker-4]
+code: |
+  Semaphore permits = new Semaphore(1); // one at a time, like a lock
+  for (int i = 1; i <= 4; i++) {
+      int id = i;
+      new Thread(() -> {
+          permits.acquireUninterruptibly(); // waits while the permit is taken
+          try { callApi(id); }
+          finally { permits.release(); }    // hand the permit back
+      }, "worker-" + id).start();
+  }
+events:
+  - { id: c1, lane: worker-1, start: 0, end: 3, type: io, label: "callApi(1)", line: 6 }
+  - { id: w2, lane: worker-2, start: 0, end: 3, type: wait, label: "acquire()", line: 5 }
+  - { id: c2, lane: worker-2, start: 3, end: 7, type: io, label: "callApi(2)", line: 6 }
+  - { id: w3, lane: worker-3, start: 0, end: 7, type: wait, label: "acquire()", line: 5 }
+  - { id: c3, lane: worker-3, start: 7, end: 10, type: io, label: "callApi(3)", line: 6 }
+  - { id: w4, lane: worker-4, start: 0, end: 10, type: wait, label: "acquire()", line: 5 }
+  - { id: c4, lane: worker-4, start: 10, end: 12, type: io, label: "callApi(4)", line: 6 }
+deps:
+  - [c1, c2]
+  - [c2, c3]
+  - [c3, c4]
+markers:
+  - { at: 0, text: "One permit. worker-1 takes it; the other three park in acquire().", line: 5 }
+  - { at: 3, text: "worker-1 releases. One waiter gets the permit, here worker-2.", line: 7 }
+  - { at: 7, text: "worker-3's turn.", line: 7 }
+  - { at: 10, text: "worker-4 goes last. 12 units instead of 6 with 2 permits.", line: 7 }
+state:
+  - { at: 0, key: free permits, value: "0" }
+  - { at: 12, key: free permits, value: "1" }
+  - { at: 0, key: waiting, value: "worker-2, 3, 4" }
+  - { at: 3, key: waiting, value: "worker-3, 4" }
+  - { at: 7, key: waiting, value: "worker-4" }
+  - { at: 10, key: waiting, value: "none" }
+takeaway: A Semaphore with one permit lets one thread in at a time, like a lock. Unlike a lock, it has no owner, so any thread can release it.
+gotcha: Which waiter gets the next permit isn't guaranteed. Use new Semaphore(1, true) if they must go in arrival order.

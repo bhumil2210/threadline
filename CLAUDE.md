@@ -33,7 +33,7 @@ Goal: fast first load and a 60 fps player on mid-range phones. Every page ships 
 
 Performance budget (enforced by Lighthouse CI on every PR: `site/lighthouserc.cjs`, run locally with `pnpm lighthouse`):
 - Lighthouse mobile (slow-4G simulation): performance ≥ 95, accessibility/best practices/SEO = 100, LCP ≤ 1.6 s, CLS 0, TBT ≤ 50 ms. Live LCP on Vercel measures 1.2–1.5 s.
-- Player JS ≤ 30 KB gzip (currently ~22 KB). No long tasks > 50 ms during playback.
+- Player JS ≤ 30 KB gzip (currently ~24 KB). No long tasks > 50 ms during playback.
 - CSS is inlined per page (`build.inlineStylesheets: 'always'`); only Plex Sans 400 is preloaded; fonts ship 400 and 600 only.
 - Reserve the player's height in CSS so it never shifts layout on hydration.
 - Respect `prefers-reduced-motion`: step mode on, no auto-play.
@@ -58,16 +58,18 @@ Out of scope for v1: backend, database, user accounts, live "run your own code" 
 id: cf-thread-hopping
 lang: java                     # java | go | rust
 group: CompletableFuture       # section on the index page
-order: 6                       # reading order within the language
+variantOf: cf-pipeline         # omit for a main scenario
+order: 2                       # main: reading order within the language; variant: place on the what-if switch
+variant: thenApply vs thenApplyAsync  # label on the what-if switch (mains with variants need one too)
 title: Which thread runs the callback?
-summary: One-line description shown under the title.
+summary: One-line description of this case, shown under the what-if switch.
 duration: 10                   # abstract time units
 lanes: [main, io-1, commonPool-1, cpu-1]
 code: |
   var f = supplyAsync(() -> slowCall(), ioPool);
   ...
 events:                        # what each lane does over time
-  - { id: a, lane: io-1, start: 1, end: 6, type: io,  label: "slowCall()", line: 1 }   # optional short: "call" for narrow blocks
+  - { id: a, lane: io-1, start: 1, end: 6, type: io,  label: "slowCall()", line: 1 }   # optional: short (narrow blocks), note (shown on tap), threadState (e.g. TIMED_WAITING, when the type's default is wrong)
   - { id: b, lane: io-1, start: 6, end: 7, type: run, label: "thenApply",  line: 3 }
 deps:                          # arrows: end of one event → start of another
   - [a, b]
@@ -85,14 +87,17 @@ Rules:
 - Events on the same lane must not overlap.
 - Every `deps` id and `line` number must exist (enforce in Zod with refinements).
 - `markers` drive step navigation: next/previous jump between marker times. Markers must be in strictly increasing time order.
-- Write-up: `scenarios/<lang>/<id>.mdx` next to the YAML, rendered under the player. Sections: What just happened, why, when to use it, watch out. Short sentences, under ~250 words.
+- **Scenarios and variants:** a page is one high-level scenario (a main timeline) plus what-if variants for other parameters or cases (`variantOf`). Variants have no page of their own; the player switches between them. Keep the set small and ordered easy → advanced.
+- Write-up: `scenarios/<lang>/<id>.mdx` next to the main YAML only, rendered under the player. Sections: What just happened, Try the what-if switch (one line per variant), why, when to use it, watch out. Short sentences, under ~250 words.
 
 ## Player behavior
 
 - Controls: restart, previous step, play/pause, next step, time scrubber, speed (0.5×/1×/2×), "Pause at each step" (default on).
 - Blocks reveal progressively up to `t`. Active blocks get an outline. Dependency arrows appear once the target event starts.
 - Code panel highlights lines of events active at `t` plus the current marker's line.
-- Deep links via URL hash. Keyboard: Space = play/pause, ←/→ = step.
+- What-if switch above the timeline; switching keeps `t`. Tap a block for its Java thread state, meaning, time and code line.
+- Deep links via URL hash (`#step-3`, or `#<variant id>/step-3`). Keyboard: Space = play/pause, ←/→ = step, Esc = close block details.
+- Page weight: the page embeds only the main timeline (its code as static slot HTML, not props). Variants load from `/<lang>/<id>/variants.json` on intent (pointer/focus on the switch) or 3 s after load. Never fetch before first paint: Lighthouse counts it against LCP.
 - Timeline scrolls horizontally inside its own box on narrow screens; page never scrolls sideways.
 
 ## Visual language
@@ -129,7 +134,9 @@ Accuracy is the product. A wrong thread assignment teaches a wrong mental model.
 - GitHub Actions runs Java (JDK 21+), Go and Rust on every PR and on a weekly schedule.
 - Use a JDK matrix where behavior differs (e.g. virtual threads pinned inside `synchronized` before JDK 24).
 - When unsure how a construct behaves, write the verification program first, then the YAML.
-- Java layout: scenario `foo-bar` → twin `verify/java/src/main/java/threadline/java/foobar/Main.java` + facts test in the same package under `src/test`. `ScenarioSyncTest` fails if a YAML has no twin or its `code` lines aren't in the twin, in order.
+- Java layout: every timeline, variants included, `foo-bar` → twin `verify/java/src/main/java/threadline/java/foobar/Main.java` + facts test in the same package under `src/test`. `ScenarioSyncTest` fails if a YAML has no twin or its `code` lines aren't in the twin, in order.
+- Facts that depend on JVM exit, the JIT, or JVM-wide settings (common pool size) run in a fresh JVM via `Facts.fork(Main.class, timeoutMs, jvmArgs...)`.
+- Every gotcha is a claim too: give it a test (e.g. `Thread.interrupted()` clears the flag, `newFixedThreadPool`'s queue is unbounded).
 - Run locally: `cd verify/java && ./gradlew test` (`-Pjdk=25` for another JDK). CI matrix: JDK 21 and 25.
 
 ## Milestone 1 (current)
@@ -147,7 +154,16 @@ Accuracy is the product. A wrong thread assignment teaches a wrong mental model.
 
 ## Scenario backlog
 
-**Java (all 13 done, in `scenarios/java`):** race condition · synchronized · AtomicInteger/CAS · fixed thread pool + queue · `Future.get()` blocks · CompletableFuture pipeline · thenApply vs thenApplyAsync · thenCompose vs thenCombine · allOf fan-out · exceptionally/handle · CountDownLatch · Semaphore · BlockingQueue producer/consumer · virtual threads (mount/unmount on carriers)
+**Java (done: 17 scenarios, 40 timelines, in `scenarios/java`).** Chosen from Stack Overflow view counts for the Java concurrency tags. Format: scenario (what-if variants).
+
+- Basics: starting a thread (`start()`, `run()` by mistake, daemon) · stopping a thread (interrupt a sleeper, busy loop checks the flag, exception swallowed) · `wait()` vs `sleep()`
+- Shared state: race condition (`count++`, synchronized, AtomicInteger) · visibility (plain field, volatile) · deadlock (opposite order, same order) · thread-safe collections (ArrayList, synchronizedList, ConcurrentHashMap)
+- Executors: thread pool (2 vs 4 threads) · `Future.get()` (late, too early)
+- CompletableFuture: which thread runs each step (pipeline, thenApply vs thenApplyAsync) · combining (compose vs combine, allOf) · exceptions (exceptionally/handle, nobody handles it)
+- Coordination: CountDownLatch (all succeed, a loader throws) · Semaphore (2 permits, 1 permit) · producer/consumer (bounded, unbounded)
+- Advanced: common pool starvation (default, own executor) · virtual threads (virtual, 2 platform threads)
+
+Deliberately left out: structured concurrency (still a preview, with different APIs in JDK 21 and 25), ThreadLocal, timers.
 
 **Go:** goroutines + WaitGroup · unbuffered channel handoff · worker pool on a buffered channel + close · select with timeout/context · sync.Mutex
 

@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import { LANG_NAME, allScenarios, byGroup, scenarioUrl } from '../lib/catalog';
 
-const java = (await allScenarios()).filter((s) => s.lang === 'java');
+const java = (await allScenarios()).filter((s) => s.main.lang === 'java');
 const groups = byGroup(java);
 ---
 
@@ -19,12 +19,13 @@ const groups = byGroup(java);
       <section class="group">
         <h3>{group}</h3>
         <ol class="list">
-          {items.map((s) => (
+          {items.map(({ main: s, variants }) => (
             <li>
               <a href={scenarioUrl(s)}>
                 <span class="num">{String(s.order).padStart(2, '0')}</span>
                 <span class="title">{s.title}</span>
                 <span class="sum">{s.summary}</span>
+                {variants.length > 0 && <span class="whatif">What-if: {variants.map((v) => v.variant).join(', ')}</span>}
               </a>
             </li>
           ))}
@@ -111,6 +112,13 @@ const groups = byGroup(java);
   .sum {
     font-size: 14px;
     color: var(--muted);
+  }
+
+  .whatif {
+    grid-column: 2;
+    margin-top: 4px;
+    font: 12px var(--font-mono);
+    color: var(--accent);
   }
 
   .soon {

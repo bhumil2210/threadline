@@ -1,0 +1,27 @@
+## What just happened
+
+main called `worker.interrupt()`. That doesn't kill anything: it sets a flag on worker. worker was asleep, and a sleeping thread checks the flag right away, so `sleep()` threw `InterruptedException`. worker's own `catch` block cleaned up and returned.
+
+## Try the what-if switch
+
+- **busy loop checks the flag**: a thread doing CPU work never blocks, so nothing throws. It has to look at `isInterrupted()` itself, and it stops at its next check.
+- **exception swallowed**: throwing `InterruptedException` *clears* the flag. The empty `catch` hides the request, the loop sees `false`, and the thread never stops.
+
+## Why it works this way
+
+Killing a thread from outside could leave locks held and objects half-updated. So Java makes stopping cooperative: you ask, and the thread stops at a safe point in its own code. `Thread.stop()` was the unsafe version; it no longer works.
+
+## Handling InterruptedException
+
+Pick one:
+
+```java
+// 1. Let it propagate: declare throws InterruptedException.
+// 2. Or restore the flag so callers can still see it:
+catch (InterruptedException e) {
+    Thread.currentThread().interrupt();
+    return;
+}
+```
+
+Executors rely on this too: `shutdownNow()` interrupts every worker, and only tasks that respond actually stop.

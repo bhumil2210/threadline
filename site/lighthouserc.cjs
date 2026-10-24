@@ -7,7 +7,7 @@ module.exports = {
       url: [
         'http://localhost/',
         'http://localhost/java/race-condition/',
-        'http://localhost/java/sync-vs-atomic/',
+        'http://localhost/java/common-pool/',
         'http://localhost/java/virtual-threads/',
       ],
       numberOfRuns: 3,

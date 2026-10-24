@@ -1,0 +1,44 @@
+id: visibility
+lang: java
+group: Shared state
+order: 5
+variant: "plain field"
+title: Why a thread never sees your flag
+summary: main sets stop = true, but worker keeps spinning forever. Without volatile, Java doesn't promise worker ever sees the write.
+duration: 9
+lanes: [main, worker]
+code: |
+  static boolean stop = false; // a plain field
+
+  public static void main(String[] args) throws Exception {
+      Thread worker = new Thread(() -> {
+          long spins = 0;
+          while (!stop) { // the JIT may read stop once and never again
+              spins++;
+          }
+          System.out.println("worker stopped after " + spins + " spins");
+      }, "worker");
+      worker.start();
+      Thread.sleep(1_000);
+      stop = true; // main writes the flag
+      System.out.println("main set stop = true");
+      worker.join(); // can wait forever
+  }
+events:
+  - { id: m1, lane: main, start: 0, end: 1, type: run, label: "start()", line: 11 }
+  - { id: m2, lane: main, start: 1, end: 3, type: wait, label: "sleep(1_000)", line: 12, threadState: TIMED_WAITING }
+  - { id: m3, lane: main, start: 3, end: 4, type: run, label: "stop = true", line: 13 }
+  - { id: m4, lane: main, start: 4, end: 9, type: wait, label: "join(): forever", short: "join()", line: 15 }
+  - { id: w1, lane: worker, start: 1, end: 2, type: run, label: "loop, reads stop", short: "loop", line: 6 }
+  - { id: w2, lane: worker, start: 2, end: 9, type: run, label: "compiled loop: stop read once", short: "loop", line: 7, note: "The JIT kept the false it read and stopped reading the field." }
+markers:
+  - { at: 1, text: "worker spins until stop becomes true.", line: 6 }
+  - { at: 2, text: "The loop is hot, so the JIT compiles it. stop is a plain field, so it may read it once and keep the value.", line: 6 }
+  - { at: 3, text: "main writes stop = true.", line: 13 }
+  - { at: 4, text: "worker never looks again. It spins forever, and join() never returns.", line: 15 }
+state:
+  - { at: 0, key: stop (in memory), value: "false" }
+  - { at: 4, key: stop (in memory), value: "true" }
+  - { at: 1, key: stop (worker sees), value: "false" }
+takeaway: Without volatile or a lock, one thread may never see another's write. In practice the JIT moves the read out of the loop.
+gotcha: The hang depends on the JIT. Small changes, like a println inside the loop, can make it go away. That hides the bug instead of fixing it.

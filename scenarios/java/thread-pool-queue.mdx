@@ -2,6 +2,10 @@
 
 The pool had 2 threads and got 4 tasks. Two tasks ran right away. The other two waited in the pool's queue, and each was picked up by whichever thread finished first. No new threads were created. The same two threads did all the work.
 
+## Try the what-if switch
+
+**4 threads**: the same four tasks each get a thread at once and nothing queues. It all finishes when the slowest task does, at 5 instead of 7. Past the number of tasks (or cores, for CPU work), more threads stop helping.
+
 ## Why pools exist
 
 Starting a platform thread is expensive: it costs memory and an OS call. A pool creates a few threads once and keeps reusing them. It also caps how much runs at once, so 10,000 requests don't become 10,000 threads.

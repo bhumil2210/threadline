@@ -1,0 +1,35 @@
+id: starting-a-thread
+lang: java
+group: Basics
+order: 1
+variant: "start()"
+title: Starting a thread
+summary: start() runs download() on a new thread, and main carries on at once. The JVM waits for worker before it exits.
+duration: 8
+lanes: [main, worker]
+code: |
+  Thread worker = new Thread(() -> download(), "worker");
+  worker.start();                     // a new thread runs download()
+  System.out.println("main goes on"); // main doesn't wait
+  // main ends here; the JVM waits for worker
+events:
+  - { id: m1, lane: main, start: 0, end: 1, type: run, label: "new Thread(…)", short: "new", line: 1 }
+  - { id: m2, lane: main, start: 1, end: 2, type: run, label: "start()", line: 2 }
+  - { id: m3, lane: main, start: 2, end: 3, type: run, label: "println", line: 3 }
+  - { id: w1, lane: worker, start: 2, end: 7, type: io, label: "download()", line: 1 }
+deps:
+  - [m2, w1]
+markers:
+  - { at: 0, text: "new Thread(…) only creates an object. Nothing runs yet: worker is NEW.", line: 1 }
+  - { at: 1, text: "start() asks the operating system for a real thread to run download().", line: 2 }
+  - { at: 2, text: "Now two threads run at the same time. main doesn't wait for worker.", line: 3 }
+  - { at: 3, text: "main is done, but the program isn't. The JVM keeps running while any normal thread is alive.", line: 4 }
+  - { at: 7, text: "download() returns and worker ends. Only now does the JVM exit.", line: 1 }
+state:
+  - { at: 0, key: worker, value: "NEW" }
+  - { at: 2, key: worker, value: "alive" }
+  - { at: 7, key: worker, value: "TERMINATED" }
+  - { at: 0, key: JVM, value: "running" }
+  - { at: 7, key: JVM, value: "exits" }
+takeaway: start() runs the code on a new thread and returns at once. The JVM waits for every normal (non-daemon) thread before it exits.
+gotcha: A thread can be started only once. Calling start() again throws IllegalThreadStateException, even after it has finished.

@@ -1,0 +1,21 @@
+## What just happened
+
+`parallelStream()` doesn't create threads of its own. It splits the work over the JVM-wide `ForkJoinPool.commonPool()` and lets the calling thread (main) help. Each `buildReport` blocked its thread, so the whole pool was busy. Then an unrelated request called `supplyAsync` with no executor, which uses the same pool. Its one-unit task waited until a worker ran out of report work.
+
+## Try the what-if switch
+
+**its own executor**: `supplyAsync(task, ioPool)` runs on ioPool's thread, so it starts at once no matter how busy the common pool is.
+
+## Why it bites
+
+The common pool is shared by everything in the JVM: parallel streams, `CompletableFuture`'s `*Async` methods without an executor, and many libraries. It's sized for CPU work, with one thread fewer than you have cores. A few blocking calls (database, HTTP, files) can tie it all up, and code elsewhere slows down for no visible reason.
+
+## Rules of thumb
+
+- `parallelStream()` is for CPU-heavy work on large data, not for blocking calls.
+- Pass your own executor to `supplyAsync`, `thenApplyAsync` and friends whenever the work can block.
+- On JDK 21+, an executor of virtual threads is a good choice for blocking calls: `Executors.newVirtualThreadPerTaskExecutor()`.
+
+## How to spot it
+
+Take a thread dump. If every `ForkJoinPool.commonPool-worker` thread is stuck in I/O, this is your problem.

@@ -1,7 +1,8 @@
 id: semaphore
 lang: java
 group: Coordination
-order: 11
+order: 14
+variant: "2 permits"
 title: Limit concurrency with a Semaphore
 summary: Four threads want to call an API that allows two at a time. A Semaphore with 2 permits keeps the rest waiting.
 duration: 7

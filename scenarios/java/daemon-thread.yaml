@@ -1,0 +1,38 @@
+id: daemon-thread
+lang: java
+group: Basics
+variantOf: starting-a-thread
+order: 3
+variant: "daemon thread"
+title: A daemon thread
+summary: The JVM doesn't wait for daemon threads. When main ends, worker is stopped mid-download.
+duration: 8
+lanes: [main, worker]
+code: |
+  Thread worker = new Thread(() -> download(), "worker");
+  worker.setDaemon(true);             // the JVM won't wait for a daemon thread
+  worker.start();
+  System.out.println("main goes on");
+  // main ends here: the JVM exits and stops worker mid-download
+events:
+  - { id: m1, lane: main, start: 0, end: 1, type: run, label: "new Thread(…)", short: "new", line: 1 }
+  - { id: m2, lane: main, start: 1, end: 2, type: run, label: "setDaemon(true)", short: "daemon", line: 2 }
+  - { id: m3, lane: main, start: 2, end: 3, type: run, label: "start()", line: 3 }
+  - { id: m4, lane: main, start: 3, end: 4, type: run, label: "println", line: 4 }
+  - { id: w1, lane: worker, start: 3, end: 4, type: io, label: "download()", short: "dl", line: 1 }
+  - { id: w2, lane: worker, start: 4, end: 8, type: skip, label: "rest of download()", short: "never runs", line: 1, note: "The JVM exited. finally blocks on daemon threads don't run either." }
+deps:
+  - [m3, w1]
+markers:
+  - { at: 0, text: "A daemon thread is a background helper. setDaemon(true) must come before start().", line: 2 }
+  - { at: 3, text: "start() runs download() on worker, as before.", line: 3 }
+  - { at: 4, text: "main ends. Only a daemon is left, so the JVM exits right away.", line: 5 }
+  - { at: 5, text: "worker is stopped mid-download with no warning. Its finally blocks never run.", line: 1 }
+state:
+  - { at: 0, key: worker, value: "NEW" }
+  - { at: 3, key: worker, value: "alive (daemon)" }
+  - { at: 4, key: worker, value: "killed" }
+  - { at: 0, key: JVM, value: "running" }
+  - { at: 4, key: JVM, value: "exits" }
+takeaway: The JVM doesn't wait for daemon threads. When the last normal thread ends, daemons are stopped wherever they are.
+gotcha: Executor threads are normal threads, so a pool you forget to shut down keeps the JVM alive. The common pool's threads (used by parallelStream and CompletableFuture) are daemons, so their work can vanish when main ends.

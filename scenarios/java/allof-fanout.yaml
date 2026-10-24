@@ -1,7 +1,9 @@
 id: allof-fanout
 lang: java
 group: CompletableFuture
-order: 8
+variantOf: compose-vs-combine
+order: 2
+variant: "allOf fan-out"
 title: Fan out with allOf
 summary: Start three calls at once and wait for all of them. The total wait is the slowest call, not the sum.
 duration: 7

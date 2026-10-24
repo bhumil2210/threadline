@@ -2,6 +2,10 @@
 
 `submit()` returned a `Future` straight away, and main kept working. When main called `f.get()`, the result wasn't ready, so main parked (`WAITING`) until the pool thread finished `slowCall()`.
 
+## Try the what-if switch
+
+**get() too early**: calling `get()` straight after `submit()` makes main wait at once, and `doOtherWork()` can only start after `slowCall()`. The code still uses a pool, but nothing overlaps, so it's as slow as doing both in a row.
+
 ## A Future is a receipt
 
 Think of it like a ticket at a coffee counter. You get it at once, and you can do other things. `get()` is walking to the counter and standing there until your order is ready.
@@ -17,4 +21,4 @@ String result = f.get(2, TimeUnit.SECONDS); // throws TimeoutException
 
 ## Its limits
 
-With a plain `Future`, the only way to use the result is to block on it. You can't say "when this is done, do that". That's what `CompletableFuture` adds, starting with the next scenario.
+With a plain `Future`, the only way to use the result is to block on it. You can't say "when this is done, do that". That's what `CompletableFuture` adds, in the next scenarios.

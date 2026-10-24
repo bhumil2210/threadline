@@ -1,8 +1,9 @@
 id: compose-vs-combine
 lang: java
 group: CompletableFuture
-order: 7
-title: thenCompose vs thenCombine
+order: 11
+variant: "compose vs combine"
+title: Combining futures
 summary: Dependent calls run one after another. Independent calls run side by side, then merge.
 duration: 12
 lanes: [main, io-1, io-2]

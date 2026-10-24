@@ -1,7 +1,8 @@
 id: producer-consumer
 lang: java
 group: Coordination
-order: 12
+order: 15
+variant: "bounded (room for 2)"
 title: Producer and consumer with a BlockingQueue
 summary: A fast producer and a slow consumer share a queue with room for 2. The queue makes each one wait for the other.
 duration: 9

@@ -4,12 +4,17 @@
 
 **thenCombine** started two calls at once, because the weather doesn't depend on the user. When both were done, `render` got both results. Total wait: the slower of the two.
 
+## Try the what-if switch
+
+**allOf fan-out**: three independent price calls start together, and `allOf(a, b, c).join()` waits for the last one. Total time is the slowest call, not the sum. After that, each `join()` returns at once.
+
 ## How to choose
 
 Ask: *does call B need A's result?*
 
 - Yes: `a.thenCompose(x -> callB(x))`, one after another.
-- No: `a.thenCombine(callB(), (x, y) -> ...)`, side by side.
+- No, two calls: `a.thenCombine(b, (x, y) -> ...)`, side by side.
+- No, many calls: start them all, then `allOf(...)`.
 
 ## Why not thenApply?
 
@@ -18,8 +23,10 @@ fetchUser(42).thenApply(user -> fetchLastOrder(user))
 // CompletableFuture<CompletableFuture<Order>>: a future inside a future
 ```
 
-`thenApply` wraps whatever you return. When your function already returns a future, `thenCompose` flattens it. It's the same idea as `flatMap` on streams and Optionals.
+When your function already returns a future, `thenCompose` flattens it, like `flatMap` on streams.
 
-## Common mistake
+## Watch out
 
-Chaining independent calls with `thenCompose` "because it works". It does work, but it's needlessly slow: you pay for every call in turn instead of only the slowest one.
+- Chaining independent calls with `thenCompose` works, but you pay for every call in turn.
+- `allOf` returns `CompletableFuture<Void>`: it tells you *when*, not *what*. Read results from the original futures.
+- If one call fails, `allOf` fails too, but only after **all** of them finish. Want the first answer instead? Use `anyOf`.

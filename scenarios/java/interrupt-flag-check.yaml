@@ -1,0 +1,44 @@
+id: interrupt-flag-check
+lang: java
+group: Basics
+variantOf: stopping-a-thread
+order: 2
+variant: "busy loop checks the flag"
+title: Stopping a busy thread
+summary: A thread that never blocks gets no exception. It must check isInterrupted() itself, and stops at its next check.
+duration: 7
+lanes: [main, worker]
+code: |
+  Thread worker = new Thread(() -> {
+      while (!Thread.currentThread().isInterrupted()) {
+          crunch(); // CPU work, never blocks
+      }
+      System.out.println("saw the flag, stopping");
+  }, "worker");
+  worker.start();
+  Thread.sleep(100);
+  worker.interrupt(); // only sets a flag
+  worker.join();
+events:
+  - { id: m1, lane: main, start: 0, end: 1, type: run, label: "start()", line: 7 }
+  - { id: m2, lane: main, start: 1, end: 3, type: wait, label: "sleep(100)", line: 8, threadState: TIMED_WAITING }
+  - { id: m3, lane: main, start: 3, end: 4, type: run, label: "interrupt()", line: 9 }
+  - { id: m4, lane: main, start: 4, end: 6, type: wait, label: "join()", line: 10 }
+  - { id: m5, lane: main, start: 6, end: 7, type: run, label: "continues", line: 10 }
+  - { id: c1, lane: worker, start: 1, end: 2.5, type: run, label: "crunch()", line: 3 }
+  - { id: c2, lane: worker, start: 2.5, end: 4.5, type: run, label: "crunch()", line: 3, note: "The flag is set while this runs, but crunch() never looks at it." }
+  - { id: k, lane: worker, start: 4.5, end: 5, type: run, label: "isInterrupted() → true", short: "true", line: 2 }
+  - { id: p, lane: worker, start: 5, end: 6, type: run, label: "println", line: 5 }
+deps:
+  - [m3, k]
+  - [p, m5]
+markers:
+  - { at: 1, text: "worker loops on CPU work. It never sleeps or waits, so nothing will throw.", line: 3 }
+  - { at: 3, text: "interrupt() sets the flag. crunch() doesn't notice and keeps running.", line: 9 }
+  - { at: 4.5, text: "Back at the loop check, isInterrupted() is true, so the loop ends.", line: 2 }
+  - { at: 6, text: "worker ends and join() returns. It stopped as soon as it looked.", line: 10 }
+state:
+  - { at: 0, key: interrupt flag, value: "false" }
+  - { at: 3, key: interrupt flag, value: "true" }
+takeaway: Code that never blocks must check isInterrupted() itself. Check often, so stopping is quick.
+gotcha: The static Thread.interrupted() also checks the flag, but clears it. Use isInterrupted() when you only want to look.

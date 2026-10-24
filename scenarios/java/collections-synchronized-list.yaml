@@ -1,0 +1,39 @@
+id: collections-synchronized-list
+lang: java
+group: Shared state
+variantOf: thread-safe-collections
+order: 2
+variant: "synchronizedList"
+title: A synchronized list
+summary: Collections.synchronizedList locks the whole list on every call. T2's add waits until T1's add is done.
+duration: 7
+lanes: [T1, T2]
+code: |
+  static final List<Integer> list = Collections.synchronizedList(new ArrayList<>());
+
+  static void addMany() {
+      for (int i = 0; i < 1_000; i++) {
+          list.add(i); // locks the list: one add at a time
+      }
+  }
+events:
+  - { id: r1, lane: T1, start: 0, end: 1, type: lock, label: "size → 0", line: 5 }
+  - { id: w1, lane: T1, start: 1, end: 2, type: lock, label: "slot[0] = 0", short: "[0]=0", line: 5 }
+  - { id: s1, lane: T1, start: 2, end: 3, type: lock, label: "size = 1", line: 5 }
+  - { id: b2, lane: T2, start: 1, end: 3, type: blocked, label: "BLOCKED on list", short: "BLOCKED", line: 5 }
+  - { id: r2, lane: T2, start: 3, end: 4, type: lock, label: "size → 1", line: 5 }
+  - { id: w2, lane: T2, start: 4, end: 5, type: lock, label: "slot[1] = 0", short: "[1]=0", line: 5 }
+  - { id: s2, lane: T2, start: 5, end: 6, type: lock, label: "size = 2", line: 5 }
+deps:
+  - [s1, r2]
+markers:
+  - { at: 0, text: "The wrapper runs every method inside synchronized on the list.", line: 1 }
+  - { at: 1, text: "T2 calls add() while T1 is inside. It is BLOCKED.", line: 5 }
+  - { at: 3, text: "T1 is done, so T2 gets the lock and sees size 1.", line: 5 }
+  - { at: 6, text: "Two adds, two elements. The loop always ends at 2000.", line: 4 }
+state:
+  - { at: 0, key: size, value: "0" }
+  - { at: 3, key: size, value: "1" }
+  - { at: 6, key: size, value: "2" }
+takeaway: synchronizedList makes each call safe by locking the whole list. Simple, but every thread queues for that one lock.
+gotcha: Each call is safe; steps combined are not. if (!list.contains(x)) list.add(x) can still add twice, and you must hold synchronized (list) yourself while you iterate.
