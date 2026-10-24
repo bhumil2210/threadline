@@ -1,16 +1,40 @@
 ---
 import Base from '../layouts/Base.astro';
 import { LANG_NAME, allScenarios, byGroup, scenarioUrl } from '../lib/catalog';
+import { absoluteUrl } from '../lib/seo';
+import { SITE_NAME } from '../lib/site';
 
 const java = (await allScenarios()).filter((s) => s.main.lang === 'java');
 const groups = byGroup(java);
+
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    { '@type': 'WebSite', name: SITE_NAME, url: absoluteUrl('/'), inLanguage: 'en' },
+    {
+      '@type': 'ItemList',
+      name: 'Java concurrency scenarios',
+      itemListElement: java.map(({ main }, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        name: main.title,
+        url: absoluteUrl(scenarioUrl(main)),
+      })),
+    },
+  ],
+};
 ---
 
-<Base title="Threadline: see which thread runs what">
+<Base
+  title="Java Concurrency, Visualized: Animated Thread Timelines | Threadline"
+  description="See which thread runs what. Java threads, locks, executors, CompletableFuture and virtual threads, animated on real thread lanes and verified against real programs on JDK 21 and 25."
+  {structuredData}
+>
   <h1>See which thread runs what.</h1>
   <p class="lead">
-    Concurrency, animated on real thread lanes. Every scenario is checked against a real program in CI, so what you see is
-    what the JVM does.
+    Java concurrency, animated on real thread lanes: threads, locks, executors, CompletableFuture and virtual threads. Every
+    scenario is checked against a real program in CI, so what you see is what the JVM does.
+    <a href="/how-we-verify/">How we verify</a>
   </p>
 
   <h2 class="lang">{LANG_NAME.java} <span>{java.length} scenarios</span></h2>

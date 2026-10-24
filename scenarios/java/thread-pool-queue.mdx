@@ -1,3 +1,15 @@
+---
+seoTitle: "How a Java Thread Pool Works: Threads, Queue, Reuse"
+description: "Animated: a fixed pool of 2 threads runs 4 tasks. Extra tasks wait in the queue and the same threads are reused. Compare with 4 threads."
+faq:
+  - q: "How does a fixed thread pool run more tasks than it has threads?"
+    a: "Tasks beyond the thread count wait in the pool's queue. Each thread takes the next task when it finishes one, so the same few threads do all the work."
+  - q: "Is the queue of newFixedThreadPool bounded?"
+    a: "No. `Executors.newFixedThreadPool` uses an unbounded `LinkedBlockingQueue`. If tasks arrive faster than they finish, the queue grows until memory runs out. Build a `ThreadPoolExecutor` with a bounded queue for production."
+  - q: "Do I need to shut down an ExecutorService?"
+    a: "Yes. The pool's threads are not daemon threads, so a pool you never `shutdown()` can keep the JVM alive."
+---
+
 ## What just happened
 
 The pool had 2 threads and got 4 tasks. Two tasks ran right away. The other two waited in the pool's queue, and each was picked up by whichever thread finished first. No new threads were created. The same two threads did all the work.

@@ -1,3 +1,15 @@
+---
+seoTitle: "parallelStream and Common Pool Starvation in Java"
+description: "Animated: blocking calls in a parallelStream fill ForkJoinPool.commonPool(), and an unrelated supplyAsync task waits. Fix it with your own executor."
+faq:
+  - q: "Which threads does parallelStream use?"
+    a: "The JVM-wide `ForkJoinPool.commonPool()`, plus the calling thread, which helps with the work. It doesn't create threads of its own."
+  - q: "How many threads does the common pool have?"
+    a: "By default, one fewer than the number of available processors. In a 2-core container that's a single worker for the whole JVM."
+  - q: "How do I stop blocking work from starving the common pool?"
+    a: "Pass your own executor: `supplyAsync(task, ioPool)`. Later `*Async` stages without an executor go back to the common pool, so pass it to each one. On JDK 21+, `Executors.newVirtualThreadPerTaskExecutor()` suits blocking calls."
+---
+
 ## What just happened
 
 `parallelStream()` doesn't create threads of its own. It splits the work over the JVM-wide `ForkJoinPool.commonPool()` and lets the calling thread (main) help. Each `buildReport` blocked its thread, so the whole pool was busy. Then an unrelated request called `supplyAsync` with no executor, which uses the same pool. Its one-unit task waited until a worker ran out of report work.

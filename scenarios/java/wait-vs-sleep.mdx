@@ -1,3 +1,17 @@
+---
+seoTitle: "wait() vs sleep() in Java: Who Keeps the Lock?"
+description: "Animated: sleep() inside synchronized keeps the lock and leaves other threads BLOCKED. wait() gives the lock up until another thread calls notify()."
+faq:
+  - q: "Does Thread.sleep() release the lock?"
+    a: "No. A sleeping thread keeps every lock it holds. Any thread that needs one of those locks stays `BLOCKED` until the sleeper wakes up and leaves the `synchronized` block."
+  - q: "Does wait() release the lock?"
+    a: "Yes. `lock.wait()` gives up that object's monitor and parks until another thread calls `notify()` or `notifyAll()`. To return from `wait()` it must take the lock back, so it can be briefly `BLOCKED`."
+  - q: "Why does wait() throw IllegalMonitorStateException?"
+    a: "`wait()` and `notify()` need the object's monitor. Call them only inside `synchronized (lock)` on the same object."
+  - q: "Does other.sleep(1000) put the other thread to sleep?"
+    a: "No. `sleep()` is static, so it always pauses the thread that calls it."
+---
+
 ## What just happened
 
 napper went to sleep inside `synchronized`. A sleeping thread stops running, but it keeps every lock it holds. other needed the same lock, so it sat `BLOCKED` for napper's entire nap.

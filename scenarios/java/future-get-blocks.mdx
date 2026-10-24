@@ -1,3 +1,15 @@
+---
+seoTitle: "Does Future.get() Block? Java Future, Animated"
+description: "Animated: submit() returns a Future at once and get() blocks the caller until the result exists. See why calling get() too early wastes the pool."
+faq:
+  - q: "Does Future.get() block?"
+    a: "Yes. If the result isn't ready, `get()` parks the calling thread (`WAITING`) until the task finishes."
+  - q: "Why isn't my ExecutorService code any faster?"
+    a: "If you call `get()` right after `submit()`, the caller waits at once and nothing overlaps. Start slow work as early as you can and call `get()` as late as you can."
+  - q: "How do I add a timeout to Future.get()?"
+    a: "Use `get(2, TimeUnit.SECONDS)`. It throws `TimeoutException` when time runs out, so a stuck task can't freeze the caller forever."
+---
+
 ## What just happened
 
 `submit()` returned a `Future` straight away, and main kept working. When main called `f.get()`, the result wasn't ready, so main parked (`WAITING`) until the pool thread finished `slowCall()`.

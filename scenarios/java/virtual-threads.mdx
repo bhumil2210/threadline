@@ -1,3 +1,17 @@
+---
+seoTitle: "Java Virtual Threads Explained: Carriers and Pinning"
+description: "Animated: three virtual threads share two carrier threads, unmounting when they block. Compare with platform threads, and see pinning before JDK 24."
+faq:
+  - q: "What is a carrier thread?"
+    a: "A platform (OS) thread that runs virtual threads. A virtual thread is mounted on a carrier only while it runs. When it blocks, it unmounts, and may resume later on a different carrier."
+  - q: "What is the difference between virtual threads and platform threads?"
+    a: "A blocked platform thread holds its OS thread doing nothing. A blocked virtual thread frees its carrier for other work, so a few carriers can serve thousands of waiting tasks."
+  - q: "Does synchronized pin virtual threads?"
+    a: "Before JDK 24, yes: blocking inside `synchronized` kept the virtual thread stuck to its carrier. JDK 24 removed that (JEP 491). Threadline's tests check both on JDK 21 and JDK 25."
+  - q: "Should I pool virtual threads?"
+    a: "No. They're cheap, so create one per task with `Executors.newVirtualThreadPerTaskExecutor()`. To limit load on a database or API, use a `Semaphore`."
+---
+
 ## What just happened
 
 Three virtual threads ran on two real OS threads, called *carriers*. A virtual thread only occupies a carrier while it's actually running. When vt-1 and vt-2 called `sleep()`, they **unmounted**, and carrier-1 picked up vt-3. After the sleeps, vt-1 and vt-2 **remounted**, on swapped carriers. For a moment all three were asleep and both carriers were free.

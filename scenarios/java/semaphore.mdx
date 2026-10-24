@@ -1,3 +1,15 @@
+---
+seoTitle: "Java Semaphore Example: Limit Concurrent Calls"
+description: "Animated: four threads call an API that allows two at a time. A Semaphore with 2 permits keeps the rest waiting. Compare with 1 permit."
+faq:
+  - q: "How do I limit how many threads call something at once?"
+    a: "Use a `Semaphore` with that many permits. Each thread calls `acquire()` before the call and `release()` after it. When no permit is left, `acquire()` waits."
+  - q: "Is a Semaphore with 1 permit the same as a lock?"
+    a: "Almost: one thread at a time. But a permit has no owner, so any thread may release it, while a lock must be released by the thread that holds it."
+  - q: "Why must release() be in a finally block?"
+    a: "If the work throws before `release()`, that permit never comes back, and your limit quietly shrinks."
+---
+
 ## What just happened
 
 The semaphore started with 2 permits. worker-1 and worker-2 took them. worker-3 and worker-4 parked in `acquire()`. Each time a worker finished and called `release()`, one waiting worker woke up and took that permit. There were never more than 2 workers inside `callApi`.

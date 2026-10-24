@@ -1,3 +1,15 @@
+---
+seoTitle: "Why count++ Is Not Thread-Safe in Java (Animated)"
+description: "Watch two threads lose an update on count++, then fix it two ways: synchronized makes threads wait, AtomicInteger makes them retry with CAS."
+faq:
+  - q: "Why is count++ not thread-safe?"
+    a: "`count++` is three steps: read, add 1, write. Two threads can both read the same old value and both write the same new one, so one increment is lost."
+  - q: "Should I use synchronized or AtomicInteger for a counter?"
+    a: "Both prevent lost updates. `synchronized` makes other threads wait for the lock. `AtomicInteger` uses compare-and-set: a thread whose value went stale retries instead of blocking. For a single counter use `incrementAndGet()`. For several values that change together, use a lock."
+  - q: "Does volatile make count++ thread-safe?"
+    a: "No. `volatile` makes writes visible to other threads, but `count++` is still read-add-write, so two threads can still lose an update."
+---
+
 ## What just happened
 
 `count++` looks like one step, but the CPU does three: read `count`, add 1, write it back. T2 read `count` before T1 had written its new value, so both threads started from 0 and both wrote 1. One update was lost.

@@ -1,3 +1,17 @@
+---
+seoTitle: "thenCompose vs thenCombine vs allOf in Java"
+description: "Animated: thenCompose runs dependent calls one after another, thenCombine runs independent calls side by side, and allOf waits for the slowest."
+faq:
+  - q: "What is the difference between thenCompose and thenCombine?"
+    a: "`thenCompose` chains a call that needs the previous result, so the calls run one after another. `thenCombine` merges two independent futures that run side by side, so you wait only for the slower one."
+  - q: "What is the difference between thenApply and thenCompose?"
+    a: "Use `thenCompose` when your function returns a `CompletableFuture`. With `thenApply` you'd get a future inside a future, `CompletableFuture<CompletableFuture<T>>`. It's like `map` vs `flatMap`."
+  - q: "How do I wait for all CompletableFutures to finish?"
+    a: "Start them all, then call `CompletableFuture.allOf(a, b, c).join()`. It takes as long as the slowest call. `allOf` returns `CompletableFuture<Void>`, so read each result with `join()` on the original futures."
+  - q: "What happens to allOf when one future fails?"
+    a: "The combined future fails too, but only after all the futures have finished."
+---
+
 ## What just happened
 
 **thenCompose** ran two calls one after another, because the second call needed the first one's result (the user). Total wait: both calls added together.

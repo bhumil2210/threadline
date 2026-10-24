@@ -1,3 +1,15 @@
+---
+seoTitle: "How to Stop a Thread in Java: interrupt() Explained"
+description: "Watch interrupt() wake a sleeping thread, a busy loop check the flag, and a swallowed InterruptedException keep a thread running forever."
+faq:
+  - q: "How do you stop a thread in Java?"
+    a: "Call `interrupt()` and let the thread stop itself. Blocking calls like `sleep()`, `wait()`, `join()` and `take()` throw `InterruptedException`. A loop doing CPU work must check `Thread.currentThread().isInterrupted()`."
+  - q: "Why does my thread keep running after interrupt()?"
+    a: "Usually an empty `catch` swallowed `InterruptedException`. Throwing it clears the interrupt flag, so the request is lost. Restore it with `Thread.currentThread().interrupt()`, or let the exception propagate."
+  - q: "Can I still use Thread.stop()?"
+    a: "No. Since JDK 20 it throws `UnsupportedOperationException`, and newer JDKs remove it. Stopping a thread from outside could leave locks held and objects half-updated."
+---
+
 ## What just happened
 
 main called `worker.interrupt()`. That doesn't kill anything: it sets a flag on worker. worker was asleep, and a sleeping thread checks the flag right away, so `sleep()` threw `InterruptedException`. worker's own `catch` block cleaned up and returned.

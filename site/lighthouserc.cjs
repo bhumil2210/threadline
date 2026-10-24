@@ -9,6 +9,7 @@ module.exports = {
         'http://localhost/java/race-condition/',
         'http://localhost/java/common-pool/',
         'http://localhost/java/virtual-threads/',
+        'http://localhost/how-we-verify/',
       ],
       numberOfRuns: 3,
     },
