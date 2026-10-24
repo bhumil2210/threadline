@@ -1,3 +1,15 @@
+---
+seoTitle: "Java volatile Explained: Why a Thread Never Sees Your Flag"
+description: "Animated: a worker spins forever on a plain boolean flag because the JIT reads it once. Making it volatile fixes the hang. Verified on JDK 21 and 25."
+faq:
+  - q: "Why does my thread never see a flag set by another thread?"
+    a: "Without `volatile` or a lock, the Java Memory Model doesn't promise one thread ever sees another's write. In practice the JIT compiles the hot loop to read the field once and reuse the value."
+  - q: "What does volatile do in Java?"
+    a: "Every read of a `volatile` field sees the latest write from any thread. That's why a loop checking a `volatile` stop flag exits on its next lap."
+  - q: "Is volatile enough for count++?"
+    a: "No. `volatile` fixes visibility, not atomicity. Use `AtomicInteger` or a lock for read-modify-write."
+---
+
 ## What just happened
 
 main set `stop = true`, but worker kept spinning. The loop was hot, so the JIT compiled it, and because `stop` is a plain field, the compiled code was allowed to read it once and reuse the value. worker never looked again, and `join()` never returned.

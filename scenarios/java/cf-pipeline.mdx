@@ -1,3 +1,15 @@
+---
+seoTitle: "thenApply vs thenApplyAsync: Which Thread Runs It?"
+description: "Animated thread lanes for CompletableFuture: see thenApply run on the completing thread or the caller, and thenApplyAsync hop to an executor."
+faq:
+  - q: "Which thread runs thenApply?"
+    a: "The thread that completes the future. If the future is already complete when you call `thenApply`, the calling thread runs the callback at once."
+  - q: "Which thread runs thenApplyAsync?"
+    a: "A thread of the executor you pass. Without one, it uses `ForkJoinPool.commonPool()`. It doesn't inherit the executor of the stage before it."
+  - q: "Why does my CompletableFuture print nothing?"
+    a: "`supplyAsync` without an executor runs on the common pool, whose threads are daemon threads. If main ends first, the JVM can exit before the pipeline finishes. Call `join()` or pass your own executor."
+---
+
 ## What just happened
 
 main described a three-step pipeline and then waited on `join()`. A common-pool thread ran the steps in order: `fetchUser`, then `thenApply` with the user, then `thenAccept` with the name. Each step started the moment the previous one finished, with its result.

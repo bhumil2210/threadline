@@ -1,0 +1,29 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Page not found | Threadline" description="This page doesn't exist. Browse the Java concurrency scenarios instead.">
+  <h1>No thread runs this page.</h1>
+  <p class="lead">The link may be old, or the scenario may have moved.</p>
+  <p><a href="/">Browse all scenarios</a></p>
+</Base>
+
+<style>
+  h1 {
+    margin: 48px 0 8px;
+    font-size: clamp(28px, 5vw, 40px);
+    font-weight: 600;
+  }
+
+  .lead {
+    color: var(--muted);
+  }
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+</style>

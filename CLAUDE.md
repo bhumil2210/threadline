@@ -29,7 +29,7 @@ Goal: fast first load and a 60 fps player on mid-range phones. Every page ships 
 | Navigation | Astro prefetch on hover + cross-document View Transitions between scenarios |
 | Fonts | IBM Plex Sans + Mono, self-hosted, Latin subset, `woff2`, preload the UI font, `font-display: swap` |
 | Hosting | Vercel (static). Live: https://threadline-be-fast.vercel.app (the old threadline-gold-nine domain redirects here). Push to `main` deploys production; every PR gets a preview URL. Project root dir is `site/` |
-| Analytics | Plausible or Umami (script < 2 KB) |
+| Analytics | Vercel Web Analytics + Speed Insights (Hobby plan: page views and real-user Core Web Vitals, no custom events). Loaded only on Vercel builds (`process.env.VERCEL`), so Lighthouse CI never sees the missing scripts |
 
 Performance budget (enforced by Lighthouse CI on every PR: `site/lighthouserc.cjs`, run locally with `pnpm lighthouse`):
 - Lighthouse mobile (slow-4G simulation): performance ≥ 95, accessibility/best practices/SEO = 100, LCP ≤ 1.6 s, CLS 0, TBT ≤ 50 ms. Live LCP on Vercel measures 1.2–1.5 s.
@@ -89,6 +89,7 @@ Rules:
 - `markers` drive step navigation: next/previous jump between marker times. Markers must be in strictly increasing time order.
 - **Scenarios and variants:** a page is one high-level scenario (a main timeline) plus what-if variants for other parameters or cases (`variantOf`). Variants have no page of their own; the player switches between them. Keep the set small and ordered easy → advanced.
 - Write-up: `scenarios/<lang>/<id>.mdx` next to the main YAML only, rendered under the player. Sections: What just happened, Try the what-if switch (one line per variant), why, when to use it, watch out. Short sentences, under ~250 words.
+- Write-up frontmatter (page-level search metadata, not timeline data): `seoTitle` (≤ 60 chars, phrased like the search people type, e.g. "thenApply vs thenApplyAsync: Which Thread Runs It?"), `description` (≤ 160 chars), and `faq`: 3–4 `{ q, a }` "Common questions" rendered after the write-up and in FAQPage JSON-LD. They sit outside the ~250-word core. Each answer is 2–3 sentences, starts with the answer, and claims only what a facts test checks (`code` spans allowed).
 
 ## Player behavior
 
@@ -138,6 +139,17 @@ Accuracy is the product. A wrong thread assignment teaches a wrong mental model.
 - Facts that depend on JVM exit, the JIT, or JVM-wide settings (common pool size) run in a fresh JVM via `Facts.fork(Main.class, timeoutMs, jvmArgs...)`.
 - Every gotcha is a claim too: give it a test (e.g. `Thread.interrupted()` clears the flag, `newFixedThreadPool`'s queue is unbounded).
 - Run locally: `cd verify/java && ./gradlew test` (`-Pjdk=25` for another JDK). CI matrix: JDK 21 and 25.
+
+## SEO
+
+Goal: engineers searching "thenApply vs thenApplyAsync", "why count++ is not thread safe", "java concurrency visualized" land here. Win long-tail "X vs Y", "why" and "visualized" queries; don't fight Baeldung for head terms.
+
+- One origin: `SITE_URL` in `site/src/lib/site.ts` (+ `site` in `astro.config.mjs`). Canonical tags, trailing slashes everywhere (`trailingSlash` in Astro and Vercel).
+- Built from the catalog, never hand-listed: `sitemap.xml`, `robots.txt` (all crawlers allowed, AI included), `llms.txt`, share images `/og/<lang>/<id>.png` (satori + resvg at build, colors read from `global.css`, Latin-subset fonts: no arrows).
+- JSON-LD per page (`site/src/lib/seo.ts` helpers): TechArticle + LearningResource, BreadcrumbList, FAQPage on scenarios; WebSite + ItemList on the index.
+- Each scenario links to its verification twin on GitHub and to `/how-we-verify/`, and lists the other scenarios in its group.
+- A main scenario's URL is permanent. When a page becomes a variant, add a 301 in `site/vercel.json` to `/<lang>/<main>/#<variant>/step-1`. `variants.json` is `noindex`.
+- After deploys: Google Search Console + Bing Webmaster (Bing feeds ChatGPT search) with the sitemap submitted; rewrite `seoTitle`s from real query data.
 
 ## Milestone 1 (current)
 

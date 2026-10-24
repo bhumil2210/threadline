@@ -1,3 +1,15 @@
+---
+seoTitle: "CountDownLatch in Java, Animated: Wait for N Tasks"
+description: "Animated: main waits on a CountDownLatch until three loaders count down. See why a loader that throws before countDown() makes main wait forever."
+faq:
+  - q: "How does CountDownLatch work?"
+    a: "It starts at a count N. `await()` blocks until the count reaches 0, and each `countDown()` lowers it by one. Any code can count down, not only threads."
+  - q: "Why does await() hang forever?"
+    a: "A worker probably threw before reaching `countDown()`, so the count never hit 0. Count down in a `finally` block, or use `await(timeout, unit)`."
+  - q: "Can a CountDownLatch be reset?"
+    a: "No. It's single-use: once it reaches 0 it stays open. For a reusable meeting point, use `CyclicBarrier` or `Phaser`."
+---
+
 ## What just happened
 
 The latch started at 3. main called `await()` and parked. Each loader called `countDown()` when it finished: 3, 2, 1, 0. At 0 the latch opened and main went on to "start serving".

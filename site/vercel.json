@@ -1,12 +1,22 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "astro",
+  "trailingSlash": true,
+  "redirects": [
+    { "source": "/java/cf-thread-hopping/", "destination": "/java/cf-pipeline/#cf-thread-hopping/step-1", "permanent": true },
+    { "source": "/java/allof-fanout/", "destination": "/java/compose-vs-combine/#allof-fanout/step-1", "permanent": true },
+    { "source": "/java/sync-vs-atomic/", "destination": "/java/race-condition/#race-atomic/step-1", "permanent": true }
+  ],
   "redirects": [
     { "source": "/java/sync-vs-atomic", "destination": "/java/race-condition/", "permanent": true },
     { "source": "/java/cf-thread-hopping", "destination": "/java/cf-pipeline/", "permanent": true },
     { "source": "/java/allof-fanout", "destination": "/java/compose-vs-combine/", "permanent": true }
   ],
   "headers": [
+    {
+      "source": "/(.*)/variants.json",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
+    },
     {
       "source": "/_astro/(.*)",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]

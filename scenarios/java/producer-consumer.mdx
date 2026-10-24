@@ -1,3 +1,15 @@
+---
+seoTitle: "BlockingQueue Producer-Consumer in Java, Animated"
+description: "Animated: a fast producer and a slow consumer share a bounded BlockingQueue. put() waits when full, take() waits when empty. Compare with an unbounded queue."
+faq:
+  - q: "How do put() and take() work on a BlockingQueue?"
+    a: "`put()` waits while the queue is full, and `take()` waits while it is empty. That keeps a fast producer at the consumer's speed, which is called backpressure."
+  - q: "ArrayBlockingQueue or LinkedBlockingQueue?"
+    a: "`ArrayBlockingQueue(n)` always has a limit, so `put()` can wait. `new LinkedBlockingQueue<>()` has no limit unless you pass one, so `put()` never waits and a fast producer fills memory."
+  - q: "How do I stop a consumer thread cleanly?"
+    a: "A common pattern is a poison pill: the producer puts a special marker last, and the consumer exits when it takes it."
+---
+
 ## What just happened
 
 The consumer started first and parked in `take()`, because the queue was empty. The producer put `a`, which woke the consumer. The producer then filled the queue with `b` and `c`. With no room left, `put(d)` parked the producer. As soon as the consumer took `b`, a slot opened and `d` went in.

@@ -1,3 +1,15 @@
+---
+seoTitle: "Is ArrayList Thread-Safe? Java Concurrent Collections"
+description: "Animated: two threads add to one ArrayList and an element is lost. Compare Collections.synchronizedList's one lock with ConcurrentHashMap's per-key locking."
+faq:
+  - q: "Is ArrayList thread-safe?"
+    a: "No. Two threads calling `add()` at once can write into the same slot, so an element is lost, or `add()` throws `ArrayIndexOutOfBoundsException` during a resize. `HashMap` has the same problem."
+  - q: "What is the difference between synchronizedList and ConcurrentHashMap?"
+    a: "`Collections.synchronizedList` puts one lock around every call, so all threads take turns. `ConcurrentHashMap` locks per key (per bin): updates to different keys don't wait for each other."
+  - q: "Why does my ConcurrentHashMap still lose updates?"
+    a: "`map.put(k, map.get(k) + 1)` is two calls, and another thread can update in between. Use one atomic call instead: `merge(k, 1, Integer::sum)`, `compute` or `computeIfAbsent`."
+---
+
 ## What just happened
 
 `ArrayList.add()` is several steps: read `size`, write the element into slot `size`, then store `size + 1`. Both threads read size 0 before either had stored the new size. Both wrote slot 0, and both set size to 1. Two adds, one element. With a resize happening at the same moment, `add()` can even throw `ArrayIndexOutOfBoundsException`.

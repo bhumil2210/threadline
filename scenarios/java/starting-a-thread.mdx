@@ -1,3 +1,15 @@
+---
+seoTitle: "Java Thread start() vs run(), Animated"
+description: "See start() run code on a new thread while run() runs it on the caller, and why the JVM waits for normal threads but not daemon threads."
+faq:
+  - q: "What is the difference between start() and run() in Java?"
+    a: "`start()` runs your code on a new thread and returns at once. `run()` is a plain method call: the code runs on the calling thread, nothing runs in parallel, and the thread stays `NEW`."
+  - q: "Can I call start() twice on the same thread?"
+    a: "No. A second `start()` throws `IllegalThreadStateException`, even after the thread has finished. Create a new `Thread`, or use an executor."
+  - q: "Does the JVM wait for daemon threads before it exits?"
+    a: "No. The JVM exits when the last non-daemon thread ends, and daemon threads are stopped wherever they are. Mark a thread with `setDaemon(true)` before calling `start()`."
+---
+
 ## What just happened
 
 `new Thread(...)` only built an object. `start()` asked the operating system for a real thread, and that thread ran `download()` while main kept going. main finished first, but the program didn't end: the JVM waited for worker.

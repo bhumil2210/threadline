@@ -1,3 +1,15 @@
+---
+seoTitle: "Java Deadlock Example, Animated: How Lock Order Fixes It"
+description: "Watch two threads take two locks in opposite order and block each other forever, then see how one global lock order makes deadlock impossible."
+faq:
+  - q: "What causes a deadlock in Java?"
+    a: "Two threads take the same locks in opposite orders. Each holds one lock and waits for the other's, so both stay `BLOCKED` forever, with no exception and no CPU use."
+  - q: "How do you prevent a deadlock?"
+    a: "Take locks in the same global order everywhere. A thread that loses the race for the first lock waits holding nothing, so it can't block anyone. `ReentrantLock.tryLock(timeout)` is another way out: give up and retry."
+  - q: "How do I find a deadlock?"
+    a: "Take a thread dump with `jstack <pid>` or your IDE. The JVM reports \"Found one Java-level deadlock\" with both threads and the locks they hold. It finds the deadlock but won't break it."
+---
+
 ## What just happened
 
 T1 took lock A, T2 took lock B. Then each needed the other's lock. T1 waited for T2 to release B, and T2 waited for T1 to release A. Neither could move, so both stayed `BLOCKED` forever: no exception, no CPU use, just a program that stops.

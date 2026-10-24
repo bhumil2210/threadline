@@ -1,3 +1,15 @@
+---
+seoTitle: "CompletableFuture exceptionally vs handle, Animated"
+description: "Watch an exception skip thenApply until exceptionally or handle catches it, and see a failure vanish silently when nothing reads the result."
+faq:
+  - q: "What is the difference between exceptionally and handle?"
+    a: "`exceptionally` runs only when the stage failed, and can replace the error with a value. `handle` always runs, with both the value and the exception (one of them is null), and can change the result."
+  - q: "What happens to the steps after an exception?"
+    a: "They are skipped. The exception passes over every following step until one handles it, like code after a `throw` until the `catch`."
+  - q: "Why does my CompletableFuture exception disappear?"
+    a: "Nothing read the result. The future quietly holds the exception: no stack trace, no log line. End every chain with `join()`, `exceptionally`, `handle` or `whenComplete`."
+---
+
 ## What just happened
 
 Shop A threw an exception, so the future held an error instead of a value. `thenApply(p -> p * 2)` was **skipped**: there was no `p` to double. `exceptionally` caught the error and replaced it with `-1`, and from there the chain carried on normally.
